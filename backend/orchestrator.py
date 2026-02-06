@@ -11,6 +11,7 @@ from fastapi import WebSocket
 
 from backend.agents.base import AgentConfig, Message, start_agent_stream
 from backend.agents.defense import create_defense_config
+from backend.agents.researcher import create_researcher_config
 from backend.logging_config import get_session_logger
 from backend.models import (
     AgentStreamMessage,
@@ -284,6 +285,11 @@ async def run_debate(
     Additional phases will be added incrementally.
     """
     session.log.info("debate_flow_start", dilemma=session.dilemma)
+
+    # --- Research Information ---
+    await _transition(session, DebatePhase.DISCOVERY, ws)
+    research_config = create_researcher_config()
+    await run_agent_turn(session, research_config, runner, ws)
 
     # --- Defense Opening ---
     await _transition(session, DebatePhase.DEFENSE_OPENING, ws)

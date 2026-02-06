@@ -1,5 +1,6 @@
-import { Scale, Wifi, WifiOff } from "lucide-react";
+import { Scale, Wifi, WifiOff, Play } from "lucide-react";
 import { useDebateSocket } from "./hooks/useDebateSocket";
+import { useDemoMode } from "./hooks/useDemoMode";
 import { DilemmaInput } from "./components/DilemmaInput";
 import { CaseBrief } from "./components/CaseBrief";
 import { CourtPanel } from "./components/CourtPanel";
@@ -16,8 +17,15 @@ const WS_URL =
   import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws/session";
 
 function App() {
-  const { state, startDebate, sendIntervention, connected } =
-    useDebateSocket(WS_URL);
+  const ws = useDebateSocket(WS_URL);
+  const demo = useDemoMode();
+
+  // Use live WebSocket when connected, fall back to demo
+  const useDemo = !ws.connected;
+  const { state, startDebate, sendIntervention } = useDemo
+    ? demo
+    : ws;
+  const connected = ws.connected;
 
   const isIntake = state.phase === "INTAKE";
   const showCourtroom = !isIntake;
@@ -25,7 +33,12 @@ function App() {
   return (
     <div className="flex min-h-screen flex-col bg-court-bg">
       {/* INTAKE: Dilemma Input */}
-      {isIntake && <DilemmaInput onSubmit={startDebate} />}
+      {isIntake && (
+        <DilemmaInput
+          onSubmit={startDebate}
+          isDemo={useDemo}
+        />
+      )}
 
       {/* COURTROOM: Main Layout */}
       {showCourtroom && (
@@ -37,6 +50,12 @@ function App() {
               <h1 className="text-lg font-bold text-court-text">
                 Courtroom
               </h1>
+              {useDemo && (
+                <span className="flex items-center gap-1 rounded-full bg-evidence/10 px-2.5 py-0.5 text-xs font-medium text-evidence">
+                  <Play className="h-3 w-3" />
+                  Demo Mode
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <PhaseIndicator phase={state.phase} />
@@ -47,7 +66,7 @@ function App() {
                   <WifiOff className="h-3.5 w-3.5 text-unknown" />
                 )}
                 <span className="text-xs text-court-text-muted">
-                  {connected ? "Live" : "Disconnected"}
+                  {connected ? "Live" : "Offline"}
                 </span>
               </div>
             </div>

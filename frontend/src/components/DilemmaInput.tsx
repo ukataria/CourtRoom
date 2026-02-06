@@ -10,9 +10,13 @@ const EXAMPLE_CHIPS = [
 
 interface DilemmaInputProps {
   onSubmit: (dilemma: string) => void;
+  isDemo?: boolean;
 }
 
-export function DilemmaInput({ onSubmit }: DilemmaInputProps) {
+export function DilemmaInput({
+  onSubmit,
+  isDemo,
+}: DilemmaInputProps) {
   const [input, setInput] = useState("");
 
   const handleSubmit = () => {
@@ -45,6 +49,12 @@ export function DilemmaInput({ onSubmit }: DilemmaInputProps) {
             Adversarial epistemology — AI agents competing on
             evidence quality, not rhetoric.
           </p>
+          {isDemo && (
+            <p className="mt-3 text-sm text-evidence">
+              Demo mode — runs with mock data (no backend
+              needed)
+            </p>
+          )}
         </div>
 
         {/* Input Area */}

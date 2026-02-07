@@ -14,7 +14,7 @@ import type { EvidenceItem, ToolCallEvent } from "../types";
 
 const LOADING_STEPS = [
   { text: "Calling Brave Search...", icon: <Globe className="h-4 w-4" /> },
-  { text: "Calling Valuu...", icon: <Search className="h-4 w-4" /> },
+  { text: "Calling Valyu...", icon: <Search className="h-4 w-4" /> },
   { text: "Exploring Websites...", icon: <Globe className="h-4 w-4" /> },
   { text: "Analyzing Documents...", icon: <FileText className="h-4 w-4" /> },
   { text: "Compiling Sources...", icon: <Layout className="h-4 w-4" /> }

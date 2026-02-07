@@ -14,7 +14,6 @@ interface UploadedFile {
 }
 
 interface DilemmaInputProps {
-  // Update: onSubmit now accepts filePaths
   onSubmit: (dilemma: string, filePaths: string[]) => void;
   isDemo?: boolean;
 }
@@ -25,14 +24,25 @@ export function DilemmaInput({
 }: DilemmaInputProps) {
   const [input, setInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [attachedFile, setAttachedFile] = useState<UploadedFile | null>(null);
+  
+  // NEW: Local state to track if we are waiting for the debate to start
+  const [isStarting, setIsStarting] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    // Extract just the paths to send to backend
-    const filePaths = files.map(f => f.file_path);
+    
+    // Lock the interface immediately
+    setIsStarting(true);
+
+    // Pass single file as an array of 1
+    const filePaths = attachedFile ? [attachedFile.file_path] : [];
+    
+    // Fire the event. The parent (App.tsx) will unmount this component
+    // once the WebSocket phase changes, so we don't need to unset isStarting.
     onSubmit(trimmed, filePaths);
   };
 
@@ -53,7 +63,6 @@ export function DilemmaInput({
     formData.append("file", e.target.files[0]);
 
     try {
-      // Assuming your backend runs on localhost:8000
       const response = await fetch("http://localhost:8000/upload", {
         method: "POST",
         body: formData,
@@ -62,22 +71,23 @@ export function DilemmaInput({
       if (!response.ok) throw new Error("Upload failed");
 
       const data = await response.json();
-      setFiles(prev => [...prev, { 
+      
+      setAttachedFile({ 
         original_name: data.original_name, 
         file_path: data.file_path 
-      }]);
+      });
+      
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("Failed to upload file");
     } finally {
       setIsUploading(false);
-      // Reset input so same file can be selected again if needed
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const removeFile = (indexToRemove: number) => {
-    setFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  const removeFile = () => {
+    setAttachedFile(null);
   };
 
   return (
@@ -97,8 +107,7 @@ export function DilemmaInput({
           </p>
           {isDemo && (
             <p className="mt-3 text-sm text-evidence">
-              Demo mode — runs with mock data (no backend
-              needed)
+              Demo mode — runs with mock data (no backend needed)
             </p>
           )}
         </div>
@@ -112,42 +121,39 @@ export function DilemmaInput({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            disabled={isStarting} // Disable input while starting
             placeholder="e.g., require AI ethics courses in the CS curriculum"
-            className="w-full resize-none rounded-xl border border-court-border bg-court-panel px-4 py-3 text-lg text-court-text placeholder-court-text-muted outline-none transition-colors focus:border-gold"
+            className="w-full resize-none rounded-xl border border-court-border bg-court-panel px-4 py-3 text-lg text-court-text placeholder-court-text-muted outline-none transition-colors focus:border-gold disabled:opacity-50"
             rows={3}
           />
           
-          {/* File Attachments List */}
-          {files.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {files.map((file, idx) => (
-                <div key={idx} className="flex items-center gap-2 rounded-md bg-court-panel border border-court-border px-3 py-1.5 text-xs text-court-text">
-                  <FileText className="h-3 w-3 text-gold" />
-                  <span className="max-w-[150px] truncate">{file.original_name}</span>
-                  <button 
-                    onClick={() => removeFile(idx)}
-                    className="ml-1 text-court-text-muted hover:text-red-400"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+          {/* File Attachment Chip */}
+          {attachedFile && (
+            <div className="mt-3 flex w-fit items-center gap-2 rounded-md bg-court-panel border border-court-border px-3 py-1.5 text-xs text-court-text">
+              <FileText className="h-3 w-3 text-gold" />
+              <span className="max-w-[200px] truncate">{attachedFile.original_name}</span>
+              <button 
+                onClick={removeFile}
+                disabled={isStarting}
+                className="ml-1 text-court-text-muted hover:text-red-400 disabled:opacity-50"
+              >
+                <X className="h-3 w-3" />
+              </button>
             </div>
           )}
 
           <div className="mt-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-               {/* Hidden File Input */}
                <input
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileSelect}
-                disabled={isUploading}
+                disabled={isUploading || isStarting} 
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
+                disabled={isUploading || isStarting}
                 className="flex items-center gap-2 text-xs text-court-text-muted hover:text-gold transition-colors disabled:opacity-50"
               >
                 {isUploading ? (
@@ -155,17 +161,31 @@ export function DilemmaInput({
                 ) : (
                   <Paperclip className="h-4 w-4" />
                 )}
-                {isUploading ? "Uploading..." : "Attach document"}
+                {isUploading 
+                  ? "Uploading..." 
+                  : attachedFile 
+                    ? "Replace document" 
+                    : "Attach document"
+                }
               </button>
             </div>
             
             <button
               onClick={handleSubmit}
-              disabled={!input.trim() || isUploading}
-              className="flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!input.trim() || isUploading || isStarting}
+              className="flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-40 min-w-[140px] justify-center"
             >
-              Open Court
-              <ArrowRight className="h-4 w-4" />
+              {isStarting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Opening...
+                </>
+              ) : (
+                <>
+                  Open Court
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -180,7 +200,8 @@ export function DilemmaInput({
               <button
                 key={chip}
                 onClick={() => setInput(chip)}
-                className="rounded-full border border-court-border bg-court-panel px-4 py-2 text-sm text-court-text-dim transition-colors hover:border-gold/50 hover:text-court-text"
+                disabled={isStarting}
+                className="rounded-full border border-court-border bg-court-panel px-4 py-2 text-sm text-court-text-dim transition-colors hover:border-gold/50 hover:text-court-text disabled:opacity-50"
               >
                 {chip}
               </button>

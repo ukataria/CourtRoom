@@ -90,7 +90,7 @@ async def upload_file(file: UploadFile = File(...)):
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        return {"file_path": str(file_path), "original_name": file.filename}
+        return {"file_path": str(file_path.absolute()), "original_name": file.filename}
     except Exception as e:
         logger.error("upload_failed", error=str(e))
         raise HTTPException(status_code=500, detail="File upload failed")

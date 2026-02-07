@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from enum import Enum
+from pathlib import Path
 
 import structlog
 from dedalus_labs import DedalusRunner
@@ -30,6 +31,7 @@ from backend.models import (
 )
 import httpx
 import os
+import base64
 
 logger = structlog.get_logger()
 
@@ -61,6 +63,9 @@ MAX_CROSS_EXCHANGES = 5  # Each side gets 5 turns (10 total)
 # --- Session State ---
 
 
+FILETYPE_MAPPING = {".pdf": "pdf"}
+
+
 class DebateSession:
     """Mutable state for a single debate.
 
@@ -81,22 +86,27 @@ class DebateSession:
         self.prosecution_score: float = 100.0
         self.log = get_session_logger(session_id)
 
-        response = httpx.post(
-            "https://api.dedaluslabs.ai/v1/ocr",
-            headers={"Authorization": f"Bearer {os.environ['DEDALUS_API_KEY']}"},
-            json={
-                "model": "mistral-ocr-latest",
-                "document": {
-                    "type": "document_url",
-                    "document_url": f"file://{file_paths[0]}",
+        if len(file_paths) > 0:
+            datapath = Path(file_paths[0])
+            b64 = base64.b64encode(datapath.read_bytes()).decode()
+            response = httpx.post(
+                "https://api.dedaluslabs.ai/v1/ocr",
+                headers={"Authorization": f"Bearer {os.environ['DEDALUS_API_KEY']}"},
+                json={
+                    "model": "mistral-ocr-latest",
+                    "document": {
+                        "type": "document_url",
+                        "document_url": f"data:application/{FILETYPE_MAPPING[datapath.suffix]};base64,{b64}",
+                    },
                 },
-            },
-            timeout=120.0,
-        )
-
-        for page in response.json()["pages"]:
-            print(f"Page {page['index']}:\n{page['markdown'][:200]}...")
-        self.file_paths = file_paths
+                timeout=120.0,
+            )
+            self.ocr = [
+                f"Page {page['index']}:\n{page['markdown'][:200]}..."
+                for page in response.json()["pages"]
+            ]
+        else:
+            self.ocr = None
 
 
 # --- Helpers ---
@@ -137,6 +147,14 @@ def _build_history(session: DebateSession) -> list[Message]:
             "content": f"DILEMMA: {session.dilemma}",
         },
     ]
+    if session.ocr is not None:
+        messages.append(
+            {
+                "role": "user",
+                "content": f"I have added a document to furhter explain the Dilemma, tkae a close look at the text representation: \
+                            Document OCR: {session.ocr}",
+            },
+        )
 
     for entry in session.transcript:
         messages.append(

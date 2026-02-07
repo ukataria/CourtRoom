@@ -100,7 +100,7 @@ export function EvidenceTrail({
             </span>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-0.5">
             {evidence.map((ev, i) => (
               <EvidenceCard
                 key={ev.id}
@@ -143,35 +143,39 @@ function EvidenceCard({
   return (
     <div
       data-evidence-id={evidence.id}
-      className={`overflow-hidden rounded-lg border transition-all duration-300 ${
-        isHighlighted
-          ? "border-evidence bg-evidence/10 ring-1 ring-evidence/40"
-          : "border-court-border bg-court-panel"
+      className={`overflow-hidden rounded-lg transition-all duration-300 ${
+        expanded
+          ? "border border-court-border bg-court-panel mb-4"
+          : isHighlighted
+            ? "border border-evidence bg-evidence/10 ring-1 ring-evidence/40"
+            : "border border-transparent"
       }`}
       style={{
-        animation: `evidence-whoosh 0.4s ease-out ${index * 0.15}s both, evidence-glow 0.8s ease-out ${index * 0.15}s both`,
+        animation: `evidence-whoosh 0.4s ease-out ${index * 0.15}s both`,
       }}
     >
-      {/* Clickable header row */}
+      {/* Clickable row */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-court-border/20"
+        className={`flex w-full items-start gap-2.5 px-2 py-1.5 text-left transition-colors ${
+          expanded ? "" : "hover:bg-court-border/10 rounded-lg"
+        }`}
       >
-        {/* Big evidence ID badge */}
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-evidence/20 font-mono text-sm font-bold text-evidence">
+        {/* Evidence ID badge */}
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded font-mono text-xs font-bold text-evidence">
           {index}
         </span>
 
-        {/* Title */}
-        <p className="min-w-0 flex-1 text-xs font-medium text-court-text line-clamp-10">
+        {/* Title — clamp to 2 lines when collapsed, full when open */}
+        <p className={`min-w-0 flex-1 text-sm text-court-text ${
+          expanded ? "" : "line-clamp-3"
+        }`}>
           {evidence.title}
         </p>
 
-        {/* Source type + chevron */}
-        {/* <Icon className="h-4 w-4 shrink-0 text-court-text-muted" /> */}
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-court-text-muted transition-transform duration-200 ${
+          className={`mt-0.5 h-3.5 w-3.5 shrink-0 text-court-text-muted transition-transform duration-200 ${
             expanded ? "rotate-180" : ""
           }`}
         />
@@ -184,17 +188,17 @@ function EvidenceCard({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-court-border/50 px-3 pb-2.5 pt-2">
-            <p className="text-xs leading-relaxed text-court-text-dim">
+          <div className="px-2 pb-2.5 pt-1">
+            <p className="pl-7.5 text-xs leading-relaxed text-court-text-dim">
               {evidence.snippet}
             </p>
 
-            <div className="mt-2 flex items-center justify-between">
+            <div className="mt-2 flex items-center justify-between pl-7.5">
               <span className="text-xs text-court-text-muted">
                 {config.label}
-                {" \u00B7 "}
+                {"\u00B7"}
                 {evidence.source}
-                {evidence.date ? ` \u00B7 ${evidence.date}` : ""}
+                {evidence.date ? `\u00B7${evidence.date}` : ""}
               </span>
               {evidence.url && (
                 <a
@@ -203,7 +207,7 @@ function EvidenceCard({
                   rel="noopener noreferrer"
                   className="flex items-center gap-0.5 text-xs text-evidence hover:underline"
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                   Source
                 </a>
               )}

@@ -329,37 +329,37 @@ async def run_debate(
     citations = Citation()
 
     # --- Research Information ---
+    await _transition(session, DebatePhase.DISCOVERY, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.DISCOVERY, ws)
         research_config = create_researcher_config(citations)
         done = await run_agent_turn(session, research_config, citations, runner, ws)
 
     # --- Defense Opening ---
+    await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
         defense_config = create_defense_config(citations)
         done = await run_agent_turn(session, defense_config, citations, runner, ws)
 
     # --- Prosecution Opening ---
+    await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
         prosecution_config = create_prosecution_config(citations)
         done = await run_agent_turn(session, prosecution_config, citations, runner, ws)
 
     # --- Cross-Examination 1: Prosecution challenges Defense ---
+    await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
         pros_cross = create_prosecution_cross_config(citations)
         done = await run_agent_turn(session, pros_cross, citations, runner, ws)
 
     # --- Cross-Examination 2: Defense responds ---
+    await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
         def_cross = create_defense_cross_config(citations)
         done = await run_agent_turn(session, def_cross, citations, runner, ws)
 

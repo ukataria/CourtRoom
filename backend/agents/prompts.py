@@ -196,6 +196,9 @@ of findings.
 You have the full transcript: research findings, defense \
 opening, prosecution opening, and cross-examination exchanges.
 
+Read the entire transcript, judging the inputs and understandin each side. Then, spit out \
+the following report, being unbiased by using a secondary model. 
+
 OUTPUT FORMAT (follow exactly):
 
 OVERVIEW: <1 sentence neutral summary of the dilemma and \

@@ -6,7 +6,7 @@ from backend.agents.prompts import (
     PROSECUTION_SYSTEM_PROMPT,
 )
 from backend.agents.tools import Citation
-from backend.config import MCP_BRAVE_SEARCH, PROSECUTION_MODELS
+from backend.config import MCP_BRAVE_SEARCH, MCP_VALYU, PROSECUTION_MODELS
 
 
 def create_prosecution_config(citations: Citation) -> AgentConfig:
@@ -22,7 +22,7 @@ def create_prosecution_config(citations: Citation) -> AgentConfig:
         role="prosecution",
         models=PROSECUTION_MODELS,
         system_prompt=PROSECUTION_SYSTEM_PROMPT,
-        mcp_servers=[MCP_BRAVE_SEARCH],
+        mcp_servers=[MCP_BRAVE_SEARCH, MCP_VALYU],
         tools=[citations.make_format_evidence_tool()],
     )
 

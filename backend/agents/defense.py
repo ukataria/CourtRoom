@@ -3,7 +3,7 @@
 from backend.agents.base import AgentConfig
 from backend.agents.prompts import DEFENSE_CROSS_PROMPT, DEFENSE_SYSTEM_PROMPT
 from backend.agents.tools import Citation
-from backend.config import DEFENSE_MODELS, MCP_BRAVE_SEARCH
+from backend.config import DEFENSE_MODELS, MCP_BRAVE_SEARCH, MCP_VALYU
 
 
 def create_defense_config(citations: Citation) -> AgentConfig:
@@ -19,7 +19,7 @@ def create_defense_config(citations: Citation) -> AgentConfig:
         role="defense",
         models=DEFENSE_MODELS,
         system_prompt=DEFENSE_SYSTEM_PROMPT,
-        mcp_servers=[MCP_BRAVE_SEARCH],
+        mcp_servers=[MCP_BRAVE_SEARCH, MCP_VALYU],
         tools=[citations.make_format_evidence_tool()],
     )
 

@@ -27,8 +27,11 @@ function App() {
   }
   const useDemo = !ws.connected && !startedLive.current;
   
-  // Destructure the appropriate startDebate function
-  const { state, startDebate, sendIntervention, startCrossExam } = useDemo ? demo : ws;
+  // Destructure the appropriate source (demo or live)
+  const { state, startDebate, sendIntervention, startCrossExam } =
+    useDemo ? demo : ws;
+  // sendInterrupt only available in live mode
+  const { sendInterrupt } = ws;
 
   const resetDebate = useCallback(() => {
     startedLive.current = false;
@@ -214,10 +217,12 @@ function App() {
           </div>
 
           {/* Intervention Bar */}
-          {/* <InterventionBar
+          <InterventionBar
             phase={state.phase}
+            interruptPending={state.interruptPending}
+            onInterrupt={sendInterrupt}
             onIntervene={sendIntervention}
-          /> */}
+          />
         </>
       )}
     </div>

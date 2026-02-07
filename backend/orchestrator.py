@@ -80,6 +80,8 @@ class DebateSession:
         self.court_directives: list[CourtDirective] = []
         self.intervention_queue: asyncio.Queue[Intervention] = asyncio.Queue()
         self.cross_exam_event: asyncio.Event = asyncio.Event()
+        self.resume_event: asyncio.Event = asyncio.Event()
+        self.disconnected: bool = False
         self.defense_score: float = 100.0
         self.prosecution_score: float = 100.0
         self.log = get_session_logger(session_id)
@@ -235,15 +237,7 @@ async def run_agent_turn(
             # Check for intervention between chunks
             try:
                 intervention = session.intervention_queue.get_nowait()
-                # Save partial response
-                session.transcript.append(
-                    TranscriptEntry(
-                        agent=config.role,
-                        content=partial_response,
-                        phase=session.phase.value,
-                        interrupted=True,
-                    )
-                )
+
                 await _send(
                     ws,
                     AgentStreamMessage(
@@ -253,13 +247,33 @@ async def run_agent_turn(
                         interrupted=True,
                     ),
                 )
-                await _handle_intervention(session, intervention, ws)
-                slog.info(
-                    "agent_interrupted",
-                    chunks_before_interrupt=chunk_count,
-                    partial_length=len(partial_response),
-                    intervention=intervention.content,
-                )
+
+                if intervention.content:
+                    # One-step intervention with content
+                    session.transcript.append(
+                        TranscriptEntry(
+                            agent=config.role,
+                            content=partial_response,
+                            phase=session.phase.value,
+                            interrupted=True,
+                        )
+                    )
+                    await handle_intervention(
+                        session, intervention, ws
+                    )
+                    slog.info(
+                        "agent_interrupted_with_content",
+                        chunks=chunk_count,
+                        intervention=intervention.content,
+                    )
+                else:
+                    # Bare interrupt — discard partial output
+                    slog.info(
+                        "agent_interrupted_bare",
+                        chunks=chunk_count,
+                        partial_length=len(partial_response),
+                    )
+
                 return False
 
             except asyncio.QueueEmpty:
@@ -325,7 +339,7 @@ async def run_agent_turn(
     return True
 
 
-async def _handle_intervention(
+async def handle_intervention(
     session: DebateSession,
     intervention: Intervention,
     ws: WebSocket,
@@ -378,17 +392,23 @@ async def _run_cross_examination(
         pros_done = await run_agent_turn(session, pros_config, citations, runner, ws)
         exchange_count += 1
 
-        # If interrupted, the turn still counts — continue to defense
+        # If interrupted, wait for user directive before continuing
         if not pros_done:
             session.log.info(
                 "cross_exam_prosecution_interrupted",
                 exchange=exchange_num + 1,
             )
+            await session.resume_event.wait()
+            session.resume_event.clear()
+            if session.disconnected:
+                return
 
         # --- Defense responds ---
         await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
         def_config = create_defense_cross_config()
-        def_done = await run_agent_turn(session, def_config, citations, runner, ws)
+        def_done = await run_agent_turn(
+            session, def_config, citations, runner, ws
+        )
         exchange_count += 1
 
         if not def_done:
@@ -396,6 +416,10 @@ async def _run_cross_examination(
                 "cross_exam_defense_interrupted",
                 exchange=exchange_num + 1,
             )
+            await session.resume_event.wait()
+            session.resume_event.clear()
+            if session.disconnected:
+                return
 
         session.log.debug(
             "cross_exam_exchange_complete",
@@ -440,14 +464,28 @@ async def run_debate(
     done = False
     while not done:
         defense_config = create_defense_config(citations)
-        done = await run_agent_turn(session, defense_config, citations, runner, ws)
+        done = await run_agent_turn(
+            session, defense_config, citations, runner, ws
+        )
+        if not done:
+            await session.resume_event.wait()
+            session.resume_event.clear()
+            if session.disconnected:
+                return
 
     # --- Prosecution Opening ---
     await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
     done = False
     while not done:
         prosecution_config = create_prosecution_config(citations)
-        done = await run_agent_turn(session, prosecution_config, citations, runner, ws)
+        done = await run_agent_turn(
+            session, prosecution_config, citations, runner, ws
+        )
+        if not done:
+            await session.resume_event.wait()
+            session.resume_event.clear()
+            if session.disconnected:
+                return
 
     # --- Await User Trigger for Cross-Examination ---
     await _transition(session, DebatePhase.AWAITING_CROSS_EXAM, ws)

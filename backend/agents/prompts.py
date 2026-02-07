@@ -83,7 +83,7 @@ DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
 CONCLUSION: <1 punchy sentence summarizing your strongest case>
 
 RULES:
-- Present around 3 numbered arguments
+- Present less than 5 numbered arguments
 - Each argument must have a SUMMARY line (one sentence, no citations) \
 and a DETAIL line (evidence with [TOOL:id] citations)
 - Every factual claim in DETAIL must have a [TOOL:id] citation
@@ -129,7 +129,7 @@ DETAIL: <2-4 sentences explaining the point and why it matters, with [TOOL:id] c
 CONCLUSION: <1 punchy sentence summarizing your strongest case>
 
 RULES:
-- Present exactly roughly numbered counter-arguments
+- Present numbered counter-arguments
 - Each argument must have a SUMMARY line (one sentence, no citations) \
 and a DETAIL line (evidence with [TOOL:id] citations)
 - Every factual claim in DETAIL must have a [TOOL:id] citation

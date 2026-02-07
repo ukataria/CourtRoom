@@ -129,6 +129,12 @@ class InterventionMessage(BaseModel):
     content: str
 
 
+class InterruptMessage(BaseModel):
+    """Client requests immediate stream halt (no content yet)."""
+
+    type: Literal["interrupt"] = "interrupt"
+
+
 class StartCrossExamMessage(BaseModel):
     """Client triggers cross-examination phase."""
 

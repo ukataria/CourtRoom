@@ -23,6 +23,7 @@ const INITIAL_STATE: DebateState = {
   courtDirectives: [],
   crossExamMessages: [],
   activeAgent: null,
+  interruptPending: false,
 };
 
 export function useDebateSocket(url: string) {
@@ -99,6 +100,25 @@ export function useDebateSocket(url: string) {
             activeAgent: msg.done ? null : msg.agent,
           };
 
+          // Interrupted — discard partial output
+          if (msg.interrupted) {
+            if (isCrossExam) {
+              const msgs = [...prev.crossExamMessages];
+              if (msgs.length > 0 && !msgs[msgs.length - 1].done) {
+                msgs.pop();
+              }
+              updates.crossExamMessages = msgs;
+            } else if (msg.agent === "defense") {
+              updates.defenseText = "";
+              updates.defenseInterrupted = true;
+            } else if (msg.agent === "prosecution") {
+              updates.prosecutionText = "";
+              updates.prosecutionInterrupted = true;
+            }
+            return { ...prev, ...updates };
+          }
+
+          // Normal streaming
           if (isCrossExam) {
             const msgs = [...prev.crossExamMessages];
             const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
@@ -120,12 +140,9 @@ export function useDebateSocket(url: string) {
             updates.crossExamMessages = msgs;
           } else if (msg.agent === "defense") {
             updates.defenseText = prev.defenseText + msg.content;
-            if (msg.interrupted) updates.defenseInterrupted = true;
           } else if (msg.agent === "prosecution") {
             updates.prosecutionText =
               prev.prosecutionText + msg.content;
-            if (msg.interrupted)
-              updates.prosecutionInterrupted = true;
           } else if (msg.agent === "researcher") {
             updates.researcherText =
               prev.researcherText + msg.content;
@@ -254,9 +271,18 @@ export function useDebateSocket(url: string) {
     }
   };
 
+  const sendInterrupt = useCallback(() => {
+    send({ type: "interrupt" });
+    setState((prev) => ({ ...prev, interruptPending: true }));
+  }, [send]);
+
   const sendIntervention = useCallback(
     (content: string) => {
       send({ type: "intervention", content });
+      setState((prev) => ({
+        ...prev,
+        interruptPending: false,
+      }));
     },
     [send]
   );
@@ -285,6 +311,7 @@ export function useDebateSocket(url: string) {
   return {
     state,
     startDebate,
+    sendInterrupt,
     sendIntervention,
     startCrossExam,
     resetDebate,

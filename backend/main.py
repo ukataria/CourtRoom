@@ -31,7 +31,11 @@ from backend.models import (
     ErrorMessage,
     Intervention,
 )
-from backend.orchestrator import DebateSession, run_debate
+from backend.orchestrator import (
+    DebateSession,
+    handle_intervention,
+    run_debate,
+)
 
 logger = structlog.get_logger()
 
@@ -122,37 +126,76 @@ async def handle_ws(
     # Holder for start data (dilemma + files)
     start_data: dict = {}
 
+    interruptible_phases = {
+        "DEFENSE_OPENING",
+        "PROSECUTION_OPENING",
+        "CROSS_EXAM_1",
+        "CROSS_EXAM_2",
+    }
+
     async def listen_for_client() -> None:
         """Listen for client messages and route them."""
-        while True:
-            data = await websocket.receive_json()
-            msg_type = data.get("type")
-            slog.debug(
-                "ws_message_received",
-                msg_type=msg_type,
-            )
-
-            if msg_type == "start" and session is None:
-                start_data["dilemma"] = data.get("dilemma", "")
-                start_data["file_paths"] = data.get("file_paths", [])
-                start_event.set()
-                slog.info(
-                    "start_message_received",
-                    dilemma=start_data["dilemma"],
-                    files=len(start_data["file_paths"]),
+        try:
+            while True:
+                data = await websocket.receive_json()
+                msg_type = data.get("type")
+                slog.debug(
+                    "ws_message_received",
+                    msg_type=msg_type,
                 )
 
-            elif msg_type == "intervention" and session:
-                content = data.get("content", "")
-                await session.intervention_queue.put(Intervention(content=content))
-                slog.info(
-                    "intervention_received",
-                    content=content,
-                )
+                if msg_type == "start" and session is None:
+                    start_data["dilemma"] = data.get(
+                        "dilemma", ""
+                    )
+                    start_data["file_paths"] = data.get(
+                        "file_paths", []
+                    )
+                    start_event.set()
+                    slog.info(
+                        "start_message_received",
+                        dilemma=start_data["dilemma"],
+                        files=len(start_data["file_paths"]),
+                    )
 
-            elif msg_type == "start_cross_exam" and session:
-                session.cross_exam_event.set()
-                slog.info("cross_exam_start_received")
+                elif msg_type == "interrupt" and session:
+                    if (
+                        session.phase.value
+                        in interruptible_phases
+                    ):
+                        await session.intervention_queue.put(
+                            Intervention(content="")
+                        )
+                        slog.info("interrupt_received")
+                    else:
+                        slog.warning(
+                            "interrupt_ignored_wrong_phase",
+                            phase=session.phase.value,
+                        )
+
+                elif msg_type == "intervention" and session:
+                    content = data.get("content", "")
+                    if content:
+                        intervention = Intervention(
+                            content=content
+                        )
+                        await handle_intervention(
+                            session, intervention, websocket
+                        )
+                        session.resume_event.set()
+                        slog.info(
+                            "intervention_submitted",
+                            content=content,
+                        )
+
+                elif msg_type == "start_cross_exam" and session:
+                    session.cross_exam_event.set()
+                    slog.info("cross_exam_start_received")
+        except WebSocketDisconnect:
+            if session:
+                session.disconnected = True
+                session.resume_event.set()
+            raise
 
     listener = asyncio.create_task(listen_for_client())
     debate_complete = False

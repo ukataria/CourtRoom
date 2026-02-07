@@ -65,6 +65,7 @@ export type ServerMessage =
 
 export type ClientMessage =
   | { type: "start"; dilemma: string; image_data: string | null }
+  | { type: "interrupt" }
   | { type: "intervention"; content: string }
   | { type: "start_cross_exam" };
 
@@ -118,4 +119,5 @@ export interface DebateState {
   courtDirectives: string[];
   crossExamMessages: CrossExamMessage[];
   activeAgent: AgentRole | null;
+  interruptPending: boolean;
 }

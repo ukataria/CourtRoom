@@ -14,7 +14,7 @@ import type { EvidenceItem, ToolCallEvent } from "../types";
 
 const LOADING_STEPS = [
   { text: "Calling Brave Search...", icon: <Globe className="h-4 w-4" /> },
-  { text: "Calling Valuu...", icon: <Search className="h-4 w-4" /> },
+  { text: "Calling Valyu...", icon: <Search className="h-4 w-4" /> },
   { text: "Exploring Websites...", icon: <Globe className="h-4 w-4" /> },
   { text: "Analyzing Documents...", icon: <FileText className="h-4 w-4" /> },
   { text: "Compiling Sources...", icon: <Layout className="h-4 w-4" /> }
@@ -66,7 +66,7 @@ export function EvidenceTrail({
 
   // Cycle through prompts every 2.5 seconds when research is active
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isResearchActive && !hasContent) {
       interval = setInterval(() => {
         setStepIndex((prev) => (prev + 1) % LOADING_STEPS.length);
@@ -90,7 +90,7 @@ export function EvidenceTrail({
     prevCountRef.current = evidence.length;
   }, [evidence.length]);
 return (
-    <div className="flex h-full flex-col rounded-xl border border-court-border bg-court-surface">
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-court-border bg-court-surface">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-court-border px-4 py-3">
         <div className="flex items-center gap-2">
@@ -169,7 +169,6 @@ function EvidenceCard({
   const config =
     SOURCE_TYPE_CONFIG[evidence.source_type] ??
     SOURCE_TYPE_CONFIG.web;
-  const Icon = config.icon;
 
   // Auto-expand when highlighted via citation click
   useEffect(() => {

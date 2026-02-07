@@ -18,6 +18,7 @@ const INITIAL_STATE: DebateState = {
   courtDirectives: [],
   crossExamMessages: [],
   activeAgent: null,
+  interruptPending: false,
 };
 
 const MOCK_CASE_BRIEF = {

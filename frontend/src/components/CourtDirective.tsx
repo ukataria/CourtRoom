@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Gavel } from "lucide-react";
 
 interface CourtDirectiveProps {
@@ -7,7 +8,17 @@ interface CourtDirectiveProps {
 export function CourtDirective({
   directives,
 }: CourtDirectiveProps) {
-  if (directives.length === 0) return null;
+  const [visible, setVisible] = useState(false);
+
+  // Show banner when a new directive arrives, auto-hide after 3s
+  useEffect(() => {
+    if (directives.length === 0) return;
+    setVisible(true);
+    const timer = setTimeout(() => setVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, [directives.length]);
+
+  if (!visible || directives.length === 0) return null;
 
   const latest = directives[directives.length - 1];
 

@@ -265,6 +265,13 @@ export function useDebateSocket(url: string) {
     send({ type: "start_cross_exam" });
   }, [send]);
 
+  const resetDebate = useCallback(() => {
+    wsRef.current?.close();
+    toolCallCounter.current = 0;
+    crossExamCounter.current = 0;
+    setState({ ...INITIAL_STATE, connected: false });
+  }, []);
+
   useEffect(() => {
     mountedRef.current = true;
     connect();
@@ -280,6 +287,7 @@ export function useDebateSocket(url: string) {
     startDebate,
     sendIntervention,
     startCrossExam,
+    resetDebate,
     connected: state.connected,
   };
 }

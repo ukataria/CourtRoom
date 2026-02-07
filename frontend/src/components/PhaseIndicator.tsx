@@ -48,7 +48,7 @@ export function PhaseIndicator({
               />
             )}
             <span
-              className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap rounded-full px-3 py-1 text-base font-medium transition-colors ${
                 isActive
                   ? "bg-gold/20 text-gold"
                   : isPast

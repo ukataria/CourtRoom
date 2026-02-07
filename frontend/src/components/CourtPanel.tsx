@@ -339,8 +339,9 @@ function StructuredView({
     <div className="space-y-4">
       {/* Argument Cards */}
       {parsed.arguments.map((arg, i) => {
-        // We only show the cursor if this is the LAST argument AND we aren't writing the conclusion yet
-        const showCursor = isActive;
+        const isLast = i === parsed.arguments.length - 1;
+        const showCursor =
+          isActive && isLast && !parsed.conclusion;
 
         return (
           <div
@@ -432,12 +433,10 @@ export function InlineText({
 }
 
 function Cursor({ color }: { color: string }) {
-  // A simple, classic terminal pipe cursor.
-  // "inline-block" ensures it sits right next to the last letter.
   return (
     <span
-      className={`ml-0.5 inline-block h-3.5 w-0.5 align-middle ${color.replace("text-", "bg-")}`}
-      style={{ animation: "cursor-blink 1s step-end infinite" }}
+      className={`ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 rounded-sm ${color.replace("text-", "bg-")}`}
+      style={{ animation: "cursor-blink 1s ease-in-out infinite" }}
     />
   );
 }

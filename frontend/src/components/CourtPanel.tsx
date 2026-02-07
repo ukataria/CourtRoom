@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Shield,
   Sword,
   Gavel,
   AlertTriangle,
   ChevronRight,
+  X,
 } from "lucide-react";
 import type { EvidenceItem, ToolCallEvent, ValidationFlag } from "../types";
 
@@ -65,6 +66,7 @@ const ROLE_CONFIG = {
 interface ParsedArgument {
   number: number;
   title: string;
+  summary: string;
   body: string;
 }
 
@@ -126,8 +128,8 @@ function parseArguments(text: string): ParsedOpening {
         ? sequential[i + 1].index
         : body.length;
     const raw = body.slice(cur.start, end).trim();
-    const { title, body: argBody } = splitTitleBody(raw);
-    args.push({ number: cur.num, title, body: argBody });
+    const { title, summary, body: argBody } = splitTitleBody(raw);
+    args.push({ number: cur.num, title, summary, body: argBody });
   }
 
   return { confidence, arguments: args, conclusion };
@@ -135,31 +137,46 @@ function parseArguments(text: string): ParsedOpening {
 
 function splitTitleBody(content: string): {
   title: string;
+  summary: string;
   body: string;
 } {
-  // If there's a colon within the first ~80 chars, use it
+  // New format: Title\nSUMMARY: ...\nDETAIL: ...
+  const summaryIdx = content.indexOf("SUMMARY:");
+  const detailIdx = content.indexOf("DETAIL:");
+
+  if (summaryIdx !== -1 && detailIdx !== -1) {
+    const title = content.slice(0, summaryIdx).trim();
+    const summary = content
+      .slice(summaryIdx + "SUMMARY:".length, detailIdx)
+      .trim();
+    const body = content.slice(detailIdx + "DETAIL:".length).trim();
+    return { title, summary, body };
+  }
+
+  // Fallback: legacy "Title: body" format (no separate summary)
   const colonIdx = content.indexOf(":");
   if (colonIdx > 0 && colonIdx < 80) {
     return {
       title: content.slice(0, colonIdx).trim(),
+      summary: "",
       body: content.slice(colonIdx + 1).trim(),
     };
   }
 
-  // Otherwise take the first sentence (up to first period followed by space)
   const sentenceEnd = content.search(/\.\s/);
   if (sentenceEnd > 0 && sentenceEnd < 120) {
     return {
       title: content.slice(0, sentenceEnd).trim(),
+      summary: "",
       body: content.slice(sentenceEnd + 1).trim(),
     };
   }
 
-  // Fallback: first 8 words
   const words = content.split(/\s+/);
   const cut = Math.min(8, words.length);
   return {
     title: words.slice(0, cut).join(" "),
+    summary: "",
     body: words.slice(cut).join(" "),
   };
 }
@@ -322,6 +339,27 @@ export function CourtPanel({
 
 export type SourceEntry = { index: number; evidenceId: string };
 
+/** Extract unique citation IDs from text (both [TOOL:id] and bare tool_xxx). */
+function extractCitationIds(
+  text: string,
+  sourceMap: Map<string, SourceEntry>,
+): SourceEntry[] {
+  const seen = new Set<string>();
+  const results: SourceEntry[] = [];
+
+  const toolPattern = /\[TOOL:([^\]]+)\]|(?:\[?)(tool_[a-f0-9]{4,8})(?:\]?)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = toolPattern.exec(text)) !== null) {
+    const id = m[1] ?? m[2];
+    const entry = sourceMap.get(id);
+    if (entry && !seen.has(entry.evidenceId)) {
+      seen.add(entry.evidenceId);
+      results.push(entry);
+    }
+  }
+  return results;
+}
+
 function StructuredView({
   parsed,
   config,
@@ -335,48 +373,155 @@ function StructuredView({
   sourceMap: Map<string, SourceEntry>;
   onCitationClick: (evidenceId: string) => void;
 }) {
-  return (
-    <div className="space-y-4">
-      {/* Argument Cards */}
-      {parsed.arguments.map((arg, i) => {
-        const isLast = i === parsed.arguments.length - 1;
-        const showCursor =
-          isActive && isLast && !parsed.conclusion;
+  const [expandedArg, setExpandedArg] = useState<number | null>(null);
 
-        return (
-          <div
-            key={i}
-            className={`rounded-md border ${config.cardBorder} ${config.cardBg} p-3`}
-          >
-            <div className="mb-2 flex items-center gap-2">
-              <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
-              >
-                {arg.number}
-              </span>
-              <h4 className={`text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
-                {arg.title}
-              </h4>
-            </div>
-            <div className="text-sm leading-relaxed text-court-text-dim">
-              <InlineText text={arg.body} sourceMap={sourceMap} onCitationClick={onCitationClick} />
+  const handleClose = useCallback(() => setExpandedArg(null), []);
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (expandedArg === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expandedArg, handleClose]);
+
+  const modalArg =
+    expandedArg !== null
+      ? parsed.arguments.find((a) => a.number === expandedArg)
+      : null;
+
+  return (
+    <>
+      <div className="space-y-3">
+        {/* Collapsed Argument Cards */}
+        {parsed.arguments.map((arg, i) => {
+          const isLast = i === parsed.arguments.length - 1;
+          const showCursor =
+            isActive && isLast && !parsed.conclusion && !arg.summary;
+          const citations = extractCitationIds(arg.body, sourceMap);
+
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setExpandedArg(arg.number)}
+              className={`w-full rounded-md border ${config.cardBorder} ${config.cardBg} p-3 text-left transition-colors hover:brightness-110`}
+            >
+              {/* Title row */}
+              <div className="flex items-center gap-2">
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
+                >
+                  {arg.number}
+                </span>
+                <h4 className={`flex-1 text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
+                  {arg.title}
+                </h4>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-court-text-muted" />
+              </div>
+
+              {/* Summary */}
+              {arg.summary && (
+                <p className="mt-1.5 text-sm leading-snug text-court-text">
+                  {arg.summary}
+                </p>
+              )}
+
+              {/* Citation badges */}
+              {citations.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {citations.map((entry) => (
+                    <span
+                      key={entry.evidenceId}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCitationClick(entry.evidenceId);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.stopPropagation();
+                          onCitationClick(entry.evidenceId);
+                        }
+                      }}
+                      className="inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-evidence hover:bg-evidence/20 transition-colors"
+                    >
+                      [{entry.index}]
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {showCursor && <Cursor color={config.color} />}
+            </button>
+          );
+        })}
+
+        {/* Conclusion */}
+        {parsed.conclusion && (
+          <div className="mt-2 flex items-start gap-2 rounded-md border border-gold/20 bg-gold/5 p-3">
+            <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-gold" />
+            <div className="text-sm font-medium leading-relaxed text-court-text italic">
+              <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
+              {isActive && <Cursor color={config.color} />}
             </div>
           </div>
-        );
-      })}
+        )}
+      </div>
 
-      {/* Conclusion */}
-      {parsed.conclusion && (
-        <div className="mt-2 flex items-start gap-2 rounded-md border border-gold/20 bg-gold/5 p-3">
-          <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-gold" />
-          <div className="text-sm font-medium leading-relaxed text-court-text italic">
-            <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
-            {isActive && <Cursor color={config.color} />}
+      {/* Detail Modal */}
+      {modalArg && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={handleClose}
+        >
+          <div
+            className="relative mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-court-border bg-court-surface p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${config.numberBg} text-sm font-bold ${config.numberText}`}
+                >
+                  {modalArg.number}
+                </span>
+                <h3 className={`text-base font-semibold uppercase tracking-wide ${config.chipText}`}>
+                  {modalArg.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="shrink-0 rounded p-1 text-court-text-muted hover:bg-white/10 hover:text-court-text transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Summary */}
+            {modalArg.summary && (
+              <p className="mb-3 text-sm font-medium leading-snug text-court-text">
+                {modalArg.summary}
+              </p>
+            )}
+
+            {/* Full detail */}
+            <div className="text-sm leading-relaxed text-court-text-dim">
+              <InlineText
+                text={modalArg.body}
+                sourceMap={sourceMap}
+                onCitationClick={onCitationClick}
+              />
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

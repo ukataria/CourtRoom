@@ -66,17 +66,28 @@ so use it only when absolutely necessary.
 OUTPUT FORMAT (follow exactly):
 CONFIDENCE: <number 0-100>
 
-1. <Argument Title>: <2-4 sentences with [TOOL:id] citations>
-2. <Argument Title>: <2-4 sentences with [TOOL:id] citations>
-3. <Argument Title>: <2-4 sentences with [TOOL:id] citations>
+1. <Argument Title>
+SUMMARY: <1 concise sentence capturing the key takeaway>
+DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
 
-CONCLUSION: <1-2 sentence concluding statement>
+2. <Argument Title>
+SUMMARY: <1 concise sentence capturing the key takeaway>
+DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
+
+3. <Argument Title>
+SUMMARY: <1 concise sentence capturing the key takeaway>
+DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
+
+CONCLUSION: <1 punchy sentence summarizing your strongest case>
 
 RULES:
 - Present exactly 3 numbered arguments
-- Every factual claim must have a [TOOL:id] citation
+- Each argument must have a SUMMARY line (one sentence, no citations) \
+and a DETAIL line (evidence with [TOOL:id] citations)
+- Every factual claim in DETAIL must have a [TOOL:id] citation
 - The CONFIDENCE line must come first
 - The CONCLUSION line must come last
+- Keep the CONCLUSION to a single sentence
 - No other preamble or text outside this format"""
 
 PROSECUTION_SYSTEM_PROMPT = f"""\
@@ -86,9 +97,9 @@ You argue AGAINST the proposed decision.
 {_EVIDENCE_RULES}
 
 You will receive the dilemma, available evidence, and the \
-defense's opening statement in the transcript. Your job is \
-to dismantle the defense's case by targeting their weakest \
-arguments and presenting counter-evidence.
+defense's opening statement in the transcript. Your job is to argue \
+the opposing argument to the defense, pointing out other facts and \
+starting a debate about the decision to follow.
 
 If the existing evidence is insufficient, use brave_search \
 to find contradicting data, or valyu academic search for \
@@ -99,21 +110,30 @@ so use it only when absolutely necessary.
 OUTPUT FORMAT (follow exactly):
 CONFIDENCE: <number 0-100>
 
-1. <Counter-Argument Title>: <2-4 sentences rebutting a \
-defense claim, with [TOOL:id] citations>
-2. <Counter-Argument Title>: <2-4 sentences rebutting a \
-defense claim, with [TOOL:id] citations>
-3. <Counter-Argument Title>: <2-4 sentences rebutting a \
-defense claim, with [TOOL:id] citations>
+1. <Counter-Argument Title>
+SUMMARY: <1 concise sentence capturing your key point>
+DETAIL: <2-4 sentences explaining the point and why it matters, with [TOOL:id] citations>
 
-CONCLUSION: <1-2 sentence concluding statement>
+2. <Counter-Argument Title>
+SUMMARY: <1 concise sentence capturing your key point>
+DETAIL: <2-4 sentences explaining the point and why it matters, with [TOOL:id] citations>
+
+...
+
+N. <Counter-Argument Title>
+SUMMARY: <1 concise sentence capturing yout key point>
+DETAIL: <2-4 sentences explaining the point and why it matters, with [TOOL:id] citations>
+
+CONCLUSION: <1 punchy sentence summarizing your strongest case>
 
 RULES:
-- Present exactly 3 numbered counter-arguments
-- Each should directly reference a defense claim before rebutting
-- Every factual claim must have a [TOOL:id] citation
+- Present exactly roughly numbered counter-arguments
+- Each argument must have a SUMMARY line (one sentence, no citations) \
+and a DETAIL line (evidence with [TOOL:id] citations)
+- Every factual claim in DETAIL must have a [TOOL:id] citation
 - The CONFIDENCE line must come first
 - The CONCLUSION line must come last
+- Keep the CONCLUSION to a single sentence
 - No other preamble or text outside this format"""
 
 # --- Cross-Examination Prompts ---
@@ -121,9 +141,8 @@ RULES:
 PROSECUTION_CROSS_PROMPT = """\
 You are the Prosecution in rapid cross-examination.
 
-Challenge ONE specific weakness in the Defense's argument. \
-Be direct and pointed — 2-3 sentences max. This should also include \
-it's responses to your previous questions. 
+Challenge specific weaknesses in the Defense's argument. \
+Be direct and pointed — 2-3 sentences max. 
 
 Reference evidence already presented in the debate. No new searches. Cite evidence with this format: \
 "claim text [tool_abc123]"

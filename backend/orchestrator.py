@@ -136,7 +136,8 @@ def _build_history(session: DebateSession) -> list[Message]:
             {
                 "role": "user",
                 "content": (
-                    f"COURT DIRECTIVE (from the decision-maker) that interrupted the prrevoius message: "
+                    "COURT DIRECTIVE (from the decision-maker) "
+                    f"that interrupted the previous message: "
                     f'"{directive.content}"{evidence_text}'
                 ),
             }
@@ -393,23 +394,23 @@ async def run_debate(
     citations = Citation()
 
     # --- Research Information ---
+    await _transition(session, DebatePhase.DISCOVERY, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.DISCOVERY, ws)
         research_config = create_researcher_config(citations)
         done = await run_agent_turn(session, research_config, citations, runner, ws)
 
     # --- Defense Opening ---
+    await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
         defense_config = create_defense_config(citations)
         done = await run_agent_turn(session, defense_config, citations, runner, ws)
 
     # --- Prosecution Opening ---
+    await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
     done = False
     while not done:
-        await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
         prosecution_config = create_prosecution_config(citations)
         done = await run_agent_turn(session, prosecution_config, citations, runner, ws)
 

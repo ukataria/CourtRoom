@@ -1,18 +1,52 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Shield, Sword, Swords } from "lucide-react";
-import type { CrossExamMessage, DebateState } from "../types";
+import type {
+  CrossExamMessage,
+  DebateState,
+  EvidenceItem,
+  ToolCallEvent,
+} from "../types";
+import { InlineText, type SourceEntry } from "./CourtPanel";
 
 interface CrossExamViewProps {
   messages: CrossExamMessage[];
   activeAgent: DebateState["activeAgent"];
+  evidence: EvidenceItem[];
+  toolCalls: ToolCallEvent[];
+  onCitationClick: (evidenceId: string) => void;
 }
 
 export function CrossExamView({
   messages,
   activeAgent,
+  evidence,
+  toolCalls,
+  onCitationClick,
 }: CrossExamViewProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const sourceMap = useMemo(() => {
+    const map = new Map<string, SourceEntry>();
+    for (let i = 0; i < evidence.length; i++) {
+      map.set(evidence[i].id, {
+        index: i + 1,
+        evidenceId: evidence[i].id,
+      });
+    }
+    for (const tc of toolCalls) {
+      if (tc.result_id && !map.has(tc.result_id)) {
+        const evMatch = evidence.find(
+          (ev) => ev.id === tc.result_id
+        );
+        if (evMatch) {
+          const existing = map.get(evMatch.id);
+          if (existing) map.set(tc.result_id, existing);
+        }
+      }
+    }
+    return map;
+  }, [evidence, toolCalls]);
 
   // Scroll the section into view when it first mounts
   useEffect(() => {
@@ -53,7 +87,12 @@ export function CrossExamView({
       {/* Messages */}
       <div className="mx-auto max-w-2xl space-y-4">
         {messages.map((msg) => (
-          <ChatBubble key={msg.id} message={msg} />
+          <ChatBubble
+            key={msg.id}
+            message={msg}
+            sourceMap={sourceMap}
+            onCitationClick={onCitationClick}
+          />
         ))}
 
         {activeAgent &&
@@ -70,7 +109,15 @@ export function CrossExamView({
   );
 }
 
-function ChatBubble({ message }: { message: CrossExamMessage }) {
+function ChatBubble({
+  message,
+  sourceMap,
+  onCitationClick,
+}: {
+  message: CrossExamMessage;
+  sourceMap: Map<string, SourceEntry>;
+  onCitationClick: (evidenceId: string) => void;
+}) {
   const isProsecution = message.agent === "prosecution";
 
   return (
@@ -103,7 +150,11 @@ function ChatBubble({ message }: { message: CrossExamMessage }) {
 
         {/* Message text */}
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-court-text">
-          {message.content}
+          <InlineText
+            text={message.content}
+            sourceMap={sourceMap}
+            onCitationClick={onCitationClick}
+          />
           {!message.done && (
             <span
               className={`ml-0.5 inline-block h-3.5 w-0.5 ${

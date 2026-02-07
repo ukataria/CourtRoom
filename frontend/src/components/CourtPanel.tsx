@@ -320,7 +320,7 @@ export function CourtPanel({
   );
 }
 
-type SourceEntry = { index: number; evidenceId: string };
+export type SourceEntry = { index: number; evidenceId: string };
 
 function StructuredView({
   parsed,
@@ -379,7 +379,7 @@ function StructuredView({
   );
 }
 
-function InlineText({
+export function InlineText({
   text,
   sourceMap,
   onCitationClick,

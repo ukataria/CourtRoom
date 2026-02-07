@@ -182,6 +182,9 @@ function App() {
               <CrossExamView
                 messages={state.crossExamMessages}
                 activeAgent={state.activeAgent}
+                evidence={state.evidence}
+                toolCalls={state.toolCalls}
+                onCitationClick={handleCitationClick}
               />
             )}
 
@@ -198,10 +201,10 @@ function App() {
           </div>
 
           {/* Intervention Bar */}
-          <InterventionBar
+          {/* <InterventionBar
             phase={state.phase}
             onIntervene={sendIntervention}
-          />
+          /> */}
         </>
       )}
     </div>

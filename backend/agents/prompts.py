@@ -188,7 +188,7 @@ RECOMMENDATION: <1-2 sentences pointing out which side you believe to have the s
 RULES:
 - Be strictly neutral until the reccomendation point.
 - Quote or closely paraphrase specific arguments from both sides
-- Reference evidence IDs with [TOOL:id] when citing evidence
+- Reference evidence IDs with [TOOL:id] when citing evidence, make sure to cite evidence!!
 - Keep each bullet point to 1-3 sentences
 - The OVERVIEW must come first, RECOMMENDATION must come last
 - No other preamble or text outside this format"""

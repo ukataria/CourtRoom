@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Search,
   CheckCircle2,
@@ -15,6 +16,7 @@ interface EvidenceTrailProps {
   evidence: EvidenceItem[];
   researcherText: string;
   isResearchActive: boolean;
+  highlightedId: string | null;
 }
 
 const SOURCE_TYPE_CONFIG: Record<
@@ -31,11 +33,24 @@ export function EvidenceTrail({
   evidence,
   researcherText,
   isResearchActive,
+  highlightedId,
 }: EvidenceTrailProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasContent =
     evidence.length > 0 ||
     toolCalls.length > 0 ||
     !!researcherText;
+
+  // Scroll to highlighted evidence card
+  useEffect(() => {
+    if (!highlightedId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current.querySelector(
+      `[data-evidence-id="${highlightedId}"]`
+    );
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightedId]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-court-border bg-court-surface">
@@ -59,6 +74,7 @@ export function EvidenceTrail({
 
       {/* Content */}
       <div
+        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-3 py-3"
         style={{ minHeight: "300px", maxHeight: "60vh" }}
       >
@@ -72,8 +88,13 @@ export function EvidenceTrail({
         ) : (
           <div className="space-y-2">
             {/* Evidence items from backend */}
-            {evidence.map((ev) => (
-              <EvidenceCard key={ev.id} evidence={ev} />
+            {evidence.map((ev, i) => (
+              <EvidenceCard
+                key={ev.id}
+                evidence={ev}
+                index={i + 1}
+                isHighlighted={highlightedId === ev.id}
+              />
             ))}
 
             {/* Tool calls (legacy / fallback) */}
@@ -89,8 +110,12 @@ export function EvidenceTrail({
 
 function EvidenceCard({
   evidence,
+  index,
+  isHighlighted,
 }: {
   evidence: EvidenceItem;
+  index: number;
+  isHighlighted: boolean;
 }) {
   const config =
     SOURCE_TYPE_CONFIG[evidence.source_type] ??
@@ -99,12 +124,20 @@ function EvidenceCard({
 
   return (
     <div
-      className="rounded-lg border border-court-border bg-court-panel p-3"
+      data-evidence-id={evidence.id}
+      className={`rounded-lg border p-3 transition-all duration-500 ${
+        isHighlighted
+          ? "border-evidence bg-evidence/10 ring-1 ring-evidence/40"
+          : "border-court-border bg-court-panel"
+      }`}
       style={{ animation: "fade-in 0.3s ease-out" }}
     >
-      {/* Title + source type */}
+      {/* Title + source type + index badge */}
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-evidence/15 font-mono text-[9px] font-bold text-evidence">
+            {index}
+          </span>
           <CheckCircle2 className="h-3 w-3 shrink-0 text-confirmed" />
           <p className="text-xs font-medium leading-snug text-court-text">
             {evidence.title}

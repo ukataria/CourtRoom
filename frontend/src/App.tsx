@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Scale, Wifi, WifiOff, Play } from "lucide-react";
 import { useDebateSocket } from "./hooks/useDebateSocket";
 import { useDemoMode } from "./hooks/useDemoMode";
@@ -34,6 +34,18 @@ function App() {
 
   const isIntake = state.phase === "INTAKE";
   const showCourtroom = !isIntake;
+
+  const [highlightedEvidenceId, setHighlightedEvidenceId] =
+    useState<string | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleCitationClick = useCallback((id: string) => {
+    clearTimeout(highlightTimer.current);
+    setHighlightedEvidenceId(id);
+    highlightTimer.current = setTimeout(() => {
+      setHighlightedEvidenceId(null);
+    }, 3000);
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-court-bg">
@@ -107,6 +119,9 @@ function App() {
                 interrupted={state.defenseInterrupted}
                 confidence={state.confidence.defense}
                 validationFlags={state.validationFlags}
+                evidence={state.evidence}
+                toolCalls={state.toolCalls}
+                onCitationClick={handleCitationClick}
               />
             </div>
 
@@ -119,6 +134,7 @@ function App() {
                 isResearchActive={
                   state.activeAgent === "researcher"
                 }
+                highlightedId={highlightedEvidenceId}
               />
             </div>
 
@@ -133,6 +149,9 @@ function App() {
                 interrupted={state.prosecutionInterrupted}
                 confidence={state.confidence.prosecution}
                 validationFlags={state.validationFlags}
+                evidence={state.evidence}
+                toolCalls={state.toolCalls}
+                onCitationClick={handleCitationClick}
               />
             </div>
           </main>

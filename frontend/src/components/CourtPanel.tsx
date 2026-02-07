@@ -6,7 +6,7 @@ import {
   AlertTriangle,
   ChevronRight,
 } from "lucide-react";
-import type { ValidationFlag } from "../types";
+import type { EvidenceItem, ToolCallEvent, ValidationFlag } from "../types";
 
 interface CourtPanelProps {
   role: "defense" | "prosecution";
@@ -15,6 +15,9 @@ interface CourtPanelProps {
   interrupted: boolean;
   confidence: number;
   validationFlags: ValidationFlag[];
+  evidence: EvidenceItem[];
+  toolCalls: ToolCallEvent[];
+  onCitationClick: (evidenceId: string) => void;
 }
 
 const ROLE_CONFIG = {
@@ -179,6 +182,9 @@ export function CourtPanel({
   interrupted,
   confidence,
   validationFlags,
+  evidence,
+  toolCalls,
+  onCitationClick,
 }: CourtPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const config = ROLE_CONFIG[role];
@@ -197,6 +203,25 @@ export function CourtPanel({
 
   const parsed = useMemo(() => parseArguments(text), [text]);
   const hasStructure = parsed.arguments.length > 0;
+
+  // Build lookup: tool ID → evidence index (1-based) + original ID
+  const sourceMap = useMemo(() => {
+    const map = new Map<string, { index: number; evidenceId: string }>();
+    for (let i = 0; i < evidence.length; i++) {
+      map.set(evidence[i].id, { index: i + 1, evidenceId: evidence[i].id });
+    }
+    for (const tc of toolCalls) {
+      if (tc.result_id && !map.has(tc.result_id)) {
+        // Try matching by result_id to an evidence item
+        const evMatch = evidence.find((ev) => ev.id === tc.result_id);
+        if (evMatch) {
+          const existing = map.get(evMatch.id);
+          if (existing) map.set(tc.result_id, existing);
+        }
+      }
+    }
+    return map;
+  }, [evidence, toolCalls]);
 
   return (
     <div
@@ -252,10 +277,12 @@ export function CourtPanel({
               parsed={parsed}
               config={config}
               isActive={isActive}
+              sourceMap={sourceMap}
+              onCitationClick={onCitationClick}
             />
           ) : (
             <div className="px-1 text-sm leading-relaxed text-court-text">
-              <InlineText text={text} />
+              <InlineText text={text} sourceMap={sourceMap} onCitationClick={onCitationClick} />
               {isActive && (
                 <BlinkingCursor color={config.color} />
               )}
@@ -316,21 +343,27 @@ export function CourtPanel({
   );
 }
 
+type SourceEntry = { index: number; evidenceId: string };
+
 function StructuredView({
   parsed,
   config,
   isActive,
+  sourceMap,
+  onCitationClick,
 }: {
   parsed: ReturnType<typeof parseArguments>;
   config: (typeof ROLE_CONFIG)[keyof typeof ROLE_CONFIG];
   isActive: boolean;
+  sourceMap: Map<string, SourceEntry>;
+  onCitationClick: (evidenceId: string) => void;
 }) {
   return (
     <div className="space-y-2.5">
       {/* Preamble - shown as a subtle intro */}
       {parsed.preamble && (
         <p className="px-1 text-xs leading-relaxed text-court-text-muted">
-          <InlineText text={parsed.preamble} />
+          <InlineText text={parsed.preamble} sourceMap={sourceMap} onCitationClick={onCitationClick} />
         </p>
       )}
 
@@ -356,7 +389,7 @@ function StructuredView({
             </h4>
           </div>
           <p className="text-xs leading-relaxed text-court-text-dim">
-            <InlineText text={arg.body} />
+            <InlineText text={arg.body} sourceMap={sourceMap} onCitationClick={onCitationClick} />
           </p>
         </div>
       ))}
@@ -366,7 +399,7 @@ function StructuredView({
         <div className="mt-1 flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3">
           <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-gold" />
           <p className="text-xs font-medium leading-relaxed text-court-text">
-            <InlineText text={parsed.conclusion} />
+            <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
           </p>
         </div>
       )}
@@ -378,22 +411,39 @@ function StructuredView({
   );
 }
 
-function InlineText({ text }: { text: string }) {
+function InlineText({
+  text,
+  sourceMap,
+  onCitationClick,
+}: {
+  text: string;
+  sourceMap: Map<string, SourceEntry>;
+  onCitationClick: (evidenceId: string) => void;
+}) {
+  const renderCitation = (id: string, key: string) => {
+    const entry = sourceMap.get(id);
+    if (!entry) return null;
+
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={() => onCitationClick(entry.evidenceId)}
+        className="mx-0.5 inline-flex cursor-pointer items-center rounded bg-evidence/15 px-1.5 py-0.5 align-text-bottom font-mono text-[10px] font-bold text-evidence transition-colors hover:bg-evidence/30"
+        title="Jump to evidence"
+      >
+        [{entry.index}]
+      </button>
+    );
+  };
+
   const parts = text.split(/(\[TOOL:[^\]]+\])/g);
   return (
     <>
       {parts.map((part, i) => {
         if (part.startsWith("[TOOL:")) {
           const id = part.slice(6, -1);
-          return (
-            <span
-              key={i}
-              className="mx-0.5 inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 align-text-bottom font-mono text-[10px] text-evidence"
-              title={`Evidence: ${id}`}
-            >
-              {id}
-            </span>
-          );
+          return renderCitation(id, String(i));
         }
         // Also handle bare tool_XXXX references (no brackets)
         const bareToolParts = part.split(
@@ -402,15 +452,7 @@ function InlineText({ text }: { text: string }) {
         if (bareToolParts.length > 1) {
           return bareToolParts.map((sub, j) => {
             if (/^tool_[a-f0-9]{4,8}$/i.test(sub)) {
-              return (
-                <span
-                  key={`${i}-${j}`}
-                  className="mx-0.5 inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 align-text-bottom font-mono text-[10px] text-evidence"
-                  title={`Evidence: ${sub}`}
-                >
-                  {sub}
-                </span>
-              );
+              return renderCitation(sub, `${i}-${j}`);
             }
             return <span key={`${i}-${j}`}>{sub}</span>;
           });

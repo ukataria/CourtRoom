@@ -133,7 +133,7 @@ def _build_history(session: DebateSession) -> list[Message]:
             {
                 "role": "user",
                 "content": (
-                    f"COURT DIRECTIVE (from the decision-maker): "
+                    f"COURT DIRECTIVE (from the decision-maker) that interrupted the prrevoius message: "
                     f'"{directive.content}"{evidence_text}'
                 ),
             }
@@ -185,9 +185,7 @@ async def run_agent_turn(
     chunk_count = 0
 
     # Forward evidence to the frontend as soon as it's produced
-    forwarder = asyncio.create_task(
-        _forward_evidence(citations, ws)
-    )
+    forwarder = asyncio.create_task(_forward_evidence(citations, ws))
 
     try:
         async for chunk in stream:
@@ -195,9 +193,7 @@ async def run_agent_turn(
 
             # Check for intervention between chunks
             try:
-                intervention = (
-                    session.intervention_queue.get_nowait()
-                )
+                intervention = session.intervention_queue.get_nowait()
                 # Save partial response
                 session.transcript.append(
                     TranscriptEntry(
@@ -216,9 +212,7 @@ async def run_agent_turn(
                         interrupted=True,
                     ),
                 )
-                await _handle_intervention(
-                    session, intervention, ws
-                )
+                await _handle_intervention(session, intervention, ws)
                 slog.info(
                     "agent_interrupted",
                     chunks_before_interrupt=chunk_count,
@@ -260,9 +254,7 @@ async def run_agent_turn(
                 evidence = citations.evidence_queue.get_nowait()
                 await _send(
                     ws,
-                    EvidenceMessage(
-                        type="evidence", **evidence
-                    ),
+                    EvidenceMessage(type="evidence", **evidence),
                 )
             except asyncio.QueueEmpty:
                 break
@@ -337,31 +329,39 @@ async def run_debate(
     citations = Citation()
 
     # --- Research Information ---
-    await _transition(session, DebatePhase.DISCOVERY, ws)
-    research_config = create_researcher_config(citations)
-    await run_agent_turn(session, research_config, citations, runner, ws)
+    done = False
+    while not done:
+        await _transition(session, DebatePhase.DISCOVERY, ws)
+        research_config = create_researcher_config(citations)
+        done = await run_agent_turn(session, research_config, citations, runner, ws)
 
     # --- Defense Opening ---
-    await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
-    defense_config = create_defense_config(citations)
-    await run_agent_turn(session, defense_config, citations, runner, ws)
+    done = False
+    while not done:
+        await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
+        defense_config = create_defense_config(citations)
+        done = await run_agent_turn(session, defense_config, citations, runner, ws)
 
     # --- Prosecution Opening ---
-    await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
-    prosecution_config = create_prosecution_config(citations)
-    await run_agent_turn(
-        session, prosecution_config, citations, runner, ws
-    )
+    done = False
+    while not done:
+        await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
+        prosecution_config = create_prosecution_config(citations)
+        done = await run_agent_turn(session, prosecution_config, citations, runner, ws)
 
     # --- Cross-Examination 1: Prosecution challenges Defense ---
-    await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
-    pros_cross = create_prosecution_cross_config(citations)
-    await run_agent_turn(session, pros_cross, citations, runner, ws)
+    done = False
+    while not done:
+        await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
+        pros_cross = create_prosecution_cross_config(citations)
+        done = await run_agent_turn(session, pros_cross, citations, runner, ws)
 
     # --- Cross-Examination 2: Defense responds ---
-    await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
-    def_cross = create_defense_cross_config(citations)
-    await run_agent_turn(session, def_cross, citations, runner, ws)
+    done = False
+    while not done:
+        await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
+        def_cross = create_defense_cross_config(citations)
+        done = await run_agent_turn(session, def_cross, citations, runner, ws)
 
     # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)

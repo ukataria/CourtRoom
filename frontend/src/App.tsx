@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Scale, Wifi, WifiOff, Play } from "lucide-react";
+import { Scale, Wifi, WifiOff, Play, Swords } from "lucide-react";
 import { useDebateSocket } from "./hooks/useDebateSocket";
 import { useDemoMode } from "./hooks/useDemoMode";
 import { DilemmaInput } from "./components/DilemmaInput";
@@ -12,6 +12,7 @@ import { ConfidenceMeter } from "./components/ConfidenceMeter";
 import { VerdictDisplay } from "./components/VerdictDisplay";
 import { EpistemicMap } from "./components/EpistemicMap";
 import { PhaseIndicator } from "./components/PhaseIndicator";
+import { CrossExamView } from "./components/CrossExamView";
 import "./index.css";
 
 const WS_URL =
@@ -34,6 +35,9 @@ function App() {
 
   const isIntake = state.phase === "INTAKE";
   const showCourtroom = !isIntake;
+  const showCrossExam =
+    state.phase === "CROSS_EXAM_1" ||
+    state.phase === "CROSS_EXAM_2";
 
   const [highlightedEvidenceId, setHighlightedEvidenceId] =
     useState<string | null>(null);
@@ -115,53 +119,77 @@ function App() {
             prosecution={state.confidence.prosecution}
           />
 
+          {/* Cross-Examination View */}
+          {showCrossExam && (
+            <CrossExamView
+              messages={state.crossExamMessages}
+              activeAgent={state.activeAgent}
+            />
+          )}
+
           {/* Three-Panel Layout */}
-          <main className="flex flex-1 gap-4 overflow-hidden p-4">
-            {/* Defense Panel */}
-            <div className="flex-1">
-              <CourtPanel
-                role="defense"
-                text={state.defenseText}
-                isActive={state.activeAgent === "defense"}
-                interrupted={state.defenseInterrupted}
-                confidence={state.confidence.defense}
-                validationFlags={state.validationFlags}
-                evidence={state.evidence}
-                toolCalls={state.toolCalls}
-                onCitationClick={handleCitationClick}
-              />
-            </div>
+          {!showCrossExam && (
+            <main className="flex flex-1 gap-4 overflow-hidden p-4">
+              {/* Defense Panel */}
+              <div className="flex-1">
+                <CourtPanel
+                  role="defense"
+                  text={state.defenseText}
+                  isActive={state.activeAgent === "defense"}
+                  interrupted={state.defenseInterrupted}
+                  confidence={state.confidence.defense}
+                  validationFlags={state.validationFlags}
+                  evidence={state.evidence}
+                  toolCalls={state.toolCalls}
+                  onCitationClick={handleCitationClick}
+                />
+              </div>
 
-            {/* Evidence Trail */}
-            <div className="w-80 shrink-0">
-              <EvidenceTrail
-                toolCalls={state.toolCalls}
-                evidence={state.evidence}
-                researcherText={state.researcherText}
-                isResearchActive={
-                  state.activeAgent === "researcher"
-                }
-                highlightedId={highlightedEvidenceId}
-              />
-            </div>
+              {/* Evidence Trail + Cross-Exam Button */}
+              <div className="flex w-80 shrink-0 flex-col">
+                <EvidenceTrail
+                  toolCalls={state.toolCalls}
+                  evidence={state.evidence}
+                  researcherText={state.researcherText}
+                  isResearchActive={
+                    state.activeAgent === "researcher"
+                  }
+                  highlightedId={highlightedEvidenceId}
+                />
 
-            {/* Prosecution Panel */}
-            <div className="flex-1">
-              <CourtPanel
-                role="prosecution"
-                text={state.prosecutionText}
-                isActive={
-                  state.activeAgent === "prosecution"
-                }
-                interrupted={state.prosecutionInterrupted}
-                confidence={state.confidence.prosecution}
-                validationFlags={state.validationFlags}
-                evidence={state.evidence}
-                toolCalls={state.toolCalls}
-                onCitationClick={handleCitationClick}
-              />
-            </div>
-          </main>
+                {state.phase === "AWAITING_CROSS_EXAM" && (
+                  <button
+                    onClick={startCrossExam}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gold/40 bg-gold/10 px-6 py-3.5 text-sm font-bold text-gold transition-all duration-300 hover:bg-gold/20 hover:shadow-lg hover:shadow-gold/20"
+                    style={{
+                      animation:
+                        "fade-in 0.4s ease-out, pulse-glow 3s infinite",
+                    }}
+                  >
+                    <Swords className="h-5 w-5" />
+                    Begin Cross-Examination
+                  </button>
+                )}
+              </div>
+
+              {/* Prosecution Panel */}
+              <div className="flex-1">
+                <CourtPanel
+                  role="prosecution"
+                  text={state.prosecutionText}
+                  isActive={
+                    state.activeAgent === "prosecution"
+                  }
+                  interrupted={state.prosecutionInterrupted}
+                  confidence={state.confidence.prosecution}
+                  validationFlags={state.validationFlags}
+                  evidence={state.evidence}
+                  toolCalls={state.toolCalls}
+                  onCitationClick={handleCitationClick}
+                />
+              </div>
+            </main>
+          )}
 
           {/* Intervention Bar */}
           <InterventionBar

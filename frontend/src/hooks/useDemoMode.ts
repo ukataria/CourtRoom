@@ -18,6 +18,7 @@ const INITIAL_STATE: DebateState = {
   courtDirectives: [],
   verdict: null,
   epistemicMap: null,
+  crossExamMessages: [],
   activeAgent: null,
 };
 
@@ -161,6 +162,32 @@ const MOCK_EPISTEMIC_MAP = {
     "Student sentiment toward mandatory vs. elective ethics coursework at CMU",
   ],
 };
+
+const MOCK_CROSS_EXAM_EXCHANGES: {
+  agent: "prosecution" | "defense";
+  content: string;
+}[] = [
+  {
+    agent: "prosecution",
+    content:
+      "You cite 72% of programs offering ethics courses, but offering is not requiring. How many of those programs mandate it? Isn't your core statistic misleading?",
+  },
+  {
+    agent: "defense",
+    content:
+      "The trend line matters more than the current mandate count. The direction is clear — from 34% to 72% in five years. Early adopters of requirements will lead, not follow.",
+  },
+  {
+    agent: "prosecution",
+    content:
+      "The MIT study shows correlation, not causation. Engineers who choose ethics courses self-select. How do you account for that?",
+  },
+  {
+    agent: "defense",
+    content:
+      "Self-selection is precisely why a mandate is needed — it ensures all engineers, not just the already-ethical ones, develop harm-identification skills.",
+  },
+];
 
 const TOKEN_DELAY = 18;
 const PHASE_DELAY = 1200;
@@ -345,36 +372,109 @@ export function useDemoMode() {
         }
       );
 
-      // Phase: VERDICT
-      t += PHASE_DELAY * 2;
+      // Phase: AWAITING_CROSS_EXAM
+      t += PHASE_DELAY;
       schedule(() => {
         setState((prev) => ({
           ...prev,
-          phase: "VERDICT",
-          confidence: { defense: 62, prosecution: 55 },
-        }));
-      }, t);
-
-      t += 2000;
-      schedule(() => {
-        setState((prev) => ({
-          ...prev,
-          verdict: MOCK_VERDICT,
-        }));
-      }, t);
-
-      // Phase: EPISTEMIC_MAP
-      t += 2500;
-      schedule(() => {
-        setState((prev) => ({
-          ...prev,
-          phase: "EPISTEMIC_MAP",
-          epistemicMap: MOCK_EPISTEMIC_MAP,
+          phase: "AWAITING_CROSS_EXAM",
+          activeAgent: null,
         }));
       }, t);
     },
     [schedule, streamText]
   );
+
+  const startCrossExam = useCallback(() => {
+    let t = 0;
+    let msgId = 0;
+
+    for (const exchange of MOCK_CROSS_EXAM_EXCHANGES) {
+      const phase =
+        exchange.agent === "prosecution"
+          ? "CROSS_EXAM_1"
+          : "CROSS_EXAM_2";
+      const id = msgId++;
+
+      t += 800;
+      const startId = id;
+      const startAgent = exchange.agent;
+      const startPhase = phase;
+      schedule(() => {
+        setState((prev) => ({
+          ...prev,
+          phase: startPhase as DebateState["phase"],
+          activeAgent: startAgent,
+          crossExamMessages: [
+            ...prev.crossExamMessages,
+            {
+              id: startId,
+              agent: startAgent,
+              content: "",
+              done: false,
+            },
+          ],
+        }));
+      }, t);
+
+      for (const char of exchange.content.split("")) {
+        t += TOKEN_DELAY;
+        const c = char;
+        schedule(() => {
+          setState((prev) => {
+            const msgs = [...prev.crossExamMessages];
+            const last = msgs[msgs.length - 1];
+            msgs[msgs.length - 1] = {
+              ...last,
+              content: last.content + c,
+            };
+            return { ...prev, crossExamMessages: msgs };
+          });
+        }, t);
+      }
+
+      t += 200;
+      schedule(() => {
+        setState((prev) => {
+          const msgs = [...prev.crossExamMessages];
+          const last = msgs[msgs.length - 1];
+          msgs[msgs.length - 1] = { ...last, done: true };
+          return {
+            ...prev,
+            activeAgent: null,
+            crossExamMessages: msgs,
+          };
+        });
+      }, t);
+    }
+
+    // After cross-exam, show verdict
+    t += PHASE_DELAY * 2;
+    schedule(() => {
+      setState((prev) => ({
+        ...prev,
+        phase: "VERDICT",
+        confidence: { defense: 62, prosecution: 55 },
+      }));
+    }, t);
+
+    t += 2000;
+    schedule(() => {
+      setState((prev) => ({
+        ...prev,
+        verdict: MOCK_VERDICT,
+      }));
+    }, t);
+
+    t += 2500;
+    schedule(() => {
+      setState((prev) => ({
+        ...prev,
+        phase: "EPISTEMIC_MAP",
+        epistemicMap: MOCK_EPISTEMIC_MAP,
+      }));
+    }, t);
+  }, [schedule]);
 
   const sendIntervention = useCallback(
     (content: string) => {
@@ -390,6 +490,7 @@ export function useDemoMode() {
     state,
     startDebate,
     sendIntervention,
+    startCrossExam,
     connected: false,
     isDemo: true,
   };

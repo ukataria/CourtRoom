@@ -23,6 +23,7 @@ const INITIAL_STATE: DebateState = {
   courtDirectives: [],
   verdict: null,
   epistemicMap: null,
+  crossExamMessages: [],
   activeAgent: null,
 };
 
@@ -31,6 +32,7 @@ export function useDebateSocket(url: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const toolCallCounter = useRef(0);
+  const crossExamCounter = useRef(0);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -76,11 +78,34 @@ export function useDebateSocket(url: string) {
 
       case "agent_stream":
         setState((prev) => {
+          const isCrossExam =
+            prev.phase === "CROSS_EXAM_1" ||
+            prev.phase === "CROSS_EXAM_2";
+
           const updates: Partial<DebateState> = {
             activeAgent: msg.done ? null : msg.agent,
           };
 
-          if (msg.agent === "defense") {
+          if (isCrossExam) {
+            const msgs = [...prev.crossExamMessages];
+            const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+
+            if (last && last.agent === msg.agent && !last.done) {
+              msgs[msgs.length - 1] = {
+                ...last,
+                content: last.content + msg.content,
+                done: msg.done,
+              };
+            } else if (!msg.done || msg.content) {
+              msgs.push({
+                id: crossExamCounter.current++,
+                agent: msg.agent as "defense" | "prosecution",
+                content: msg.content,
+                done: msg.done,
+              });
+            }
+            updates.crossExamMessages = msgs;
+          } else if (msg.agent === "defense") {
             updates.defenseText = prev.defenseText + msg.content;
             if (msg.interrupted) updates.defenseInterrupted = true;
           } else if (msg.agent === "prosecution") {
@@ -247,6 +272,10 @@ export function useDebateSocket(url: string) {
     [send]
   );
 
+  const startCrossExam = useCallback(() => {
+    send({ type: "start_cross_exam" });
+  }, [send]);
+
   useEffect(() => {
     connect();
     return () => {
@@ -259,6 +288,7 @@ export function useDebateSocket(url: string) {
     state,
     startDebate,
     sendIntervention,
+    startCrossExam,
     connected: state.connected,
   };
 }
@@ -270,13 +300,15 @@ function getActiveAgent(
     case "DISCOVERY":
       return "researcher";
     case "DEFENSE_OPENING":
-    case "CROSS_EXAM_1":
     case "DEFENSE_CLOSING":
       return "defense";
     case "PROSECUTION_OPENING":
-    case "CROSS_EXAM_2":
     case "PROSECUTION_CLOSING":
       return "prosecution";
+    case "CROSS_EXAM_1":
+      return "prosecution";
+    case "CROSS_EXAM_2":
+      return "defense";
     case "VERDICT":
       return "judge";
     default:

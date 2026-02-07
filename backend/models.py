@@ -129,6 +129,12 @@ class InterventionMessage(BaseModel):
     content: str
 
 
+class StartCrossExamMessage(BaseModel):
+    """Client triggers cross-examination phase."""
+
+    type: Literal["start_cross_exam"] = "start_cross_exam"
+
+
 # --- Helpers ---
 
 

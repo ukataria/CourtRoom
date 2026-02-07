@@ -9,8 +9,7 @@ const PHASES: { key: DebatePhase; label: string }[] = [
   { key: "DISCOVERY", label: "Discovery" },
   { key: "DEFENSE_OPENING", label: "Defense" },
   { key: "PROSECUTION_OPENING", label: "Prosecution" },
-  { key: "CROSS_EXAM_1", label: "Cross-Exam" },
-  { key: "CROSS_EXAM_2", label: "Cross-Exam 2" },
+  { key: "AWAITING_CROSS_EXAM", label: "Cross-Exam" },
   { key: "DEFENSE_CLOSING", label: "Closing" },
   { key: "PROSECUTION_CLOSING", label: "Closing" },
   { key: "VERDICT", label: "Verdict" },
@@ -20,14 +19,25 @@ const PHASES: { key: DebatePhase; label: string }[] = [
 export function PhaseIndicator({
   phase,
 }: PhaseIndicatorProps) {
-  const currentIndex = PHASES.findIndex(
-    (p) => p.key === phase
-  );
+  const currentIndex = PHASES.findIndex((p) => {
+    if (p.key === "AWAITING_CROSS_EXAM") {
+      return (
+        phase === "AWAITING_CROSS_EXAM" ||
+        phase === "CROSS_EXAM_1" ||
+        phase === "CROSS_EXAM_2"
+      );
+    }
+    return p.key === phase;
+  });
 
   return (
     <div className="flex items-center gap-1 overflow-x-auto px-6 py-2">
       {PHASES.map((p, i) => {
-        const isActive = p.key === phase;
+        const isActive =
+          p.key === phase ||
+          (p.key === "AWAITING_CROSS_EXAM" &&
+            (phase === "CROSS_EXAM_1" ||
+              phase === "CROSS_EXAM_2"));
         const isPast = i < currentIndex;
         return (
           <div key={p.key} className="flex items-center">

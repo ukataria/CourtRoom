@@ -150,6 +150,10 @@ async def handle_ws(
                     content=content,
                 )
 
+            elif msg_type == "start_cross_exam" and session:
+                session.cross_exam_event.set()
+                slog.info("cross_exam_start_received")
+
     listener = asyncio.create_task(listen_for_client())
 
     try:

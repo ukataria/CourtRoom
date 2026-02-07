@@ -4,6 +4,7 @@ export type DebatePhase =
   | "DISCOVERY"
   | "DEFENSE_OPENING"
   | "PROSECUTION_OPENING"
+  | "AWAITING_CROSS_EXAM"
   | "CROSS_EXAM_1"
   | "CROSS_EXAM_2"
   | "DEFENSE_CLOSING"
@@ -81,7 +82,8 @@ export type ServerMessage =
 
 export type ClientMessage =
   | { type: "start"; dilemma: string; image_data: string | null }
-  | { type: "intervention"; content: string };
+  | { type: "intervention"; content: string }
+  | { type: "start_cross_exam" };
 
 export interface DecisiveEvidence {
   id: string;
@@ -107,6 +109,13 @@ export interface EvidenceItem {
   source_type: string;
   date: string;
   url: string;
+}
+
+export interface CrossExamMessage {
+  id: number;
+  agent: "defense" | "prosecution";
+  content: string;
+  done: boolean;
 }
 
 export interface ValidationFlag {
@@ -142,5 +151,6 @@ export interface DebateState {
     contested: string[];
     unknown: string[];
   } | null;
+  crossExamMessages: CrossExamMessage[];
   activeAgent: AgentRole | null;
 }

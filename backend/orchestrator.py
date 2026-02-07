@@ -45,6 +45,7 @@ class DebatePhase(str, Enum):
     DISCOVERY = "DISCOVERY"
     DEFENSE_OPENING = "DEFENSE_OPENING"
     PROSECUTION_OPENING = "PROSECUTION_OPENING"
+    AWAITING_CROSS_EXAM = "AWAITING_CROSS_EXAM"
     # Cross-examination: alternates CROSS_EXAM_1 (prosecution) / CROSS_EXAM_2 (defense)
     CROSS_EXAM_1 = "CROSS_EXAM_1"  # Prosecution challenges
     CROSS_EXAM_2 = "CROSS_EXAM_2"  # Defense responds
@@ -75,6 +76,7 @@ class DebateSession:
         self.evidence: list[Evidence] = []
         self.court_directives: list[CourtDirective] = []
         self.intervention_queue: asyncio.Queue[Intervention] = asyncio.Queue()
+        self.cross_exam_event: asyncio.Event = asyncio.Event()
         self.defense_score: float = 100.0
         self.prosecution_score: float = 100.0
         self.log = get_session_logger(session_id)
@@ -430,6 +432,12 @@ async def run_debate(
     while not done:
         prosecution_config = create_prosecution_config(citations)
         done = await run_agent_turn(session, prosecution_config, citations, runner, ws)
+
+    # --- Await User Trigger for Cross-Examination ---
+    await _transition(session, DebatePhase.AWAITING_CROSS_EXAM, ws)
+    session.log.info("awaiting_cross_exam_trigger")
+    await session.cross_exam_event.wait()
+    session.log.info("cross_exam_triggered_by_user")
 
     # --- Cross-Examination: Rapid back-and-forth (5 exchanges each) ---
     await _run_cross_examination(session, citations, runner, ws)

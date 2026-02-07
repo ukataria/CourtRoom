@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Shield,
   Sword,
@@ -7,6 +7,18 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { EvidenceItem, ToolCallEvent, ValidationFlag } from "../types";
+
+// Minimized animations (Just a simple blink and a slow fade)
+const ANIMATION_STYLES = `
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  @keyframes slow-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+`;
 
 interface CourtPanelProps {
   role: "defense" | "prosecution";
@@ -165,22 +177,30 @@ export function CourtPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const config = ROLE_CONFIG[role];
   const Icon = config.icon;
+  
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+  // Simple auto-scroll logic
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setShouldAutoScroll(isAtBottom);
+  };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop =
-        scrollRef.current.scrollHeight;
+    if (shouldAutoScroll && scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
     }
-  }, [text]);
+  }, [text, shouldAutoScroll]);
 
-  const agentFlags = validationFlags.filter(
-    (f) => f.agent === role
-  );
-
+  const agentFlags = validationFlags.filter((f) => f.agent === role);
   const parsed = useMemo(() => parseArguments(text), [text]);
   const hasStructure = parsed.arguments.length > 0;
 
-  // Build lookup: tool ID → evidence index (1-based) + original ID
   const sourceMap = useMemo(() => {
     const map = new Map<string, { index: number; evidenceId: string }>();
     for (let i = 0; i < evidence.length; i++) {
@@ -188,7 +208,6 @@ export function CourtPanel({
     }
     for (const tc of toolCalls) {
       if (tc.result_id && !map.has(tc.result_id)) {
-        // Try matching by result_id to an evidence item
         const evMatch = evidence.find((ev) => ev.id === tc.result_id);
         if (evMatch) {
           const existing = map.get(evMatch.id);
@@ -200,118 +219,104 @@ export function CourtPanel({
   }, [evidence, toolCalls]);
 
   return (
-    <div
-      className={`flex h-full flex-col rounded-xl border ${
-        isActive
-          ? `${config.borderColor} ${config.bgActive}`
-          : "border-court-border bg-court-surface"
-      } transition-colors duration-300`}
-    >
-      {/* Header */}
-      <div className="border-b border-court-border px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon className={`h-5 w-5 ${config.color}`} />
-            <span
-              className={`text-base font-semibold ${config.color}`}
-            >
-              {config.label}
-            </span>
-            {isActive && (
-              <span className="flex items-center gap-1 text-xs text-court-text-muted">
-                <span
-                  className={`inline-block h-1.5 w-1.5 rounded-full ${config.barColor}`}
-                  style={{
-                    animation: "typing-dot 1.4s infinite",
-                  }}
-                />
-                Speaking...
-              </span>
-            )}
-            {interrupted && (
-              <span className="flex items-center gap-1 rounded-md bg-gold/10 px-2 py-0.5 text-xs text-gold">
-                <Gavel className="h-3 w-3" />
-                Interrupted
-              </span>
-            )}
-          </div>
-          {hasStructure && !isActive && (
-            <span className="text-sm text-court-text-muted">
-              {parsed.arguments.length} arguments
-            </span>
-          )}
-        </div>
-        {/* Confidence bar */}
-        {parsed.confidence !== null && (
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-court-panel">
-              <div
-                className={`h-full rounded-full ${config.barColor} transition-all duration-700 ease-out`}
-                style={{ width: `${parsed.confidence}%` }}
-              />
-            </div>
-            <span className={`text-xs font-semibold ${config.color}`}>
-              {parsed.confidence}%
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
+    <>
+      <style>{ANIMATION_STYLES}</style>
       <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-3"
-        style={{ minHeight: "300px",}}
+        className={`flex h-full flex-col rounded-xl border transition-colors duration-300 ${
+          isActive
+            ? `${config.borderColor} ${config.bgActive}`
+            : "border-court-border bg-court-surface"
+        }`}
       >
-        {text ? (
-          hasStructure ? (
-            <StructuredView
-              parsed={parsed}
-              config={config}
-              isActive={isActive}
-              sourceMap={sourceMap}
-              onCitationClick={onCitationClick}
-            />
-          ) : (
-            <div className="px-1 text-base leading-relaxed text-court-text">
-              <InlineText text={text} sourceMap={sourceMap} onCitationClick={onCitationClick} />
+        {/* Header */}
+        <div className="border-b border-court-border px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon className={`h-4 w-4 ${config.color}`} />
+              <span className={`text-sm font-semibold ${config.color}`}>
+                {config.label}
+              </span>
               {isActive && (
-                <BlinkingCursor color={config.color} />
+                <span className="ml-2 text-xs text-court-text-muted" style={{ animation: "slow-pulse 2s infinite" }}>
+                  Speaking...
+                </span>
+              )}
+              {interrupted && (
+                <span className="flex items-center gap-1 rounded bg-gold/10 px-1.5 py-0.5 text-[10px] text-gold border border-gold/20">
+                  <Gavel className="h-3 w-3" />
+                  Interrupted
+                </span>
               )}
             </div>
-          )
-        ) : (
-          <div className="flex h-full items-center justify-center text-base text-court-text-muted">
-            {isActive
-              ? "Preparing argument..."
-              : "Awaiting turn..."}
+            {hasStructure && !isActive && (
+              <span className="text-xs text-court-text-muted">
+                {parsed.arguments.length} args
+              </span>
+            )}
+          </div>
+          
+          {/* Simple Confidence Bar */}
+          {parsed.confidence !== null && (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-court-panel">
+                <div
+                  className={`h-full rounded-full ${config.barColor} transition-all duration-300`}
+                  style={{ width: `${parsed.confidence}%` }}
+                />
+              </div>
+              <span className={`text-[10px] font-mono ${config.color}`}>
+                {parsed.confidence}%
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Content Area */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-4 py-4"
+          style={{ minHeight: "300px" }}
+        >
+          {text ? (
+            hasStructure ? (
+              <StructuredView
+                parsed={parsed}
+                config={config}
+                isActive={isActive}
+                sourceMap={sourceMap}
+                onCitationClick={onCitationClick}
+              />
+            ) : (
+              <div className="text-sm leading-relaxed text-court-text whitespace-pre-wrap">
+                <InlineText text={text} sourceMap={sourceMap} onCitationClick={onCitationClick} />
+                {isActive && <Cursor color={config.color} />}
+              </div>
+            )
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-court-text-muted opacity-50">
+              {isActive ? "Thinking..." : "Awaiting turn..."}
+            </div>
+          )}
+        </div>
+
+        {/* Validation Flags */}
+        {agentFlags.length > 0 && (
+          <div className="border-t border-court-border px-4 py-2 bg-black/5">
+            {agentFlags.map((flag, i) => (
+              <div key={i} className="flex items-start gap-2 py-1 text-[10px]">
+                <AlertTriangle
+                  className={`mt-0.5 h-3 w-3 shrink-0 ${
+                    flag.status === "unsupported" ? "text-contested" : "text-gold"
+                  }`}
+                />
+                <span className="text-court-text-dim">{flag.claim}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
-
-      {/* Validation Flags */}
-      {agentFlags.length > 0 && (
-        <div className="border-t border-court-border px-4 py-2">
-          {agentFlags.map((flag, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-2 py-1 text-xs"
-            >
-              <AlertTriangle
-                className={`mt-0.5 h-3 w-3 shrink-0 ${
-                  flag.status === "unsupported"
-                    ? "text-contested"
-                    : "text-gold"
-                }`}
-              />
-              <span className="text-court-text-dim">
-                {flag.claim}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -331,46 +336,44 @@ function StructuredView({
   onCitationClick: (evidenceId: string) => void;
 }) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-4">
       {/* Argument Cards */}
-      {parsed.arguments.map((arg, i) => (
-        <div
-          key={i}
-          className={`rounded-lg border ${config.cardBorder} ${config.cardBg} p-3`}
-          style={{
-            animation: `fade-in 0.3s ease-out ${i * 0.05}s both`,
-          }}
-        >
-          <div className="mb-1.5 flex items-center gap-2">
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${config.numberBg} text-sm font-bold ${config.numberText}`}
-            >
-              {arg.number}
-            </span>
-            <h4
-              className={`text-sm font-semibold ${config.chipText}`}
-            >
-              {arg.title}
-            </h4>
+      {parsed.arguments.map((arg, i) => {
+        // We only show the cursor if this is the LAST argument AND we aren't writing the conclusion yet
+        const showCursor = isActive;
+
+        return (
+          <div
+            key={i}
+            className={`rounded-md border ${config.cardBorder} ${config.cardBg} p-3`}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
+              >
+                {arg.number}
+              </span>
+              <h4 className={`text-xs font-semibold uppercase tracking-wide ${config.chipText}`}>
+                {arg.title}
+              </h4>
+            </div>
+            <div className="text-sm leading-relaxed text-court-text-dim">
+              <InlineText text={arg.body} sourceMap={sourceMap} onCitationClick={onCitationClick} />
+              {showCursor && <Cursor color={config.color} />}
+            </div>
           </div>
-          <p className="text-sm leading-relaxed text-court-text-dim">
-            <InlineText text={arg.body} sourceMap={sourceMap} onCitationClick={onCitationClick} />
-          </p>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Conclusion */}
       {parsed.conclusion && (
-        <div className="mt-1 flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3">
-          <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-gold" />
-          <p className="text-sm font-medium leading-relaxed text-court-text">
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-gold/20 bg-gold/5 p-3">
+          <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-gold" />
+          <div className="text-sm font-medium leading-relaxed text-court-text italic">
             <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
-          </p>
+            {isActive && <Cursor color={config.color} />}
+          </div>
         </div>
-      )}
-
-      {isActive && (
-        <BlinkingCursor color={config.color} />
       )}
     </div>
   );
@@ -394,7 +397,7 @@ function InlineText({
         key={key}
         type="button"
         onClick={() => onCitationClick(entry.evidenceId)}
-        className="inline cursor-pointer font-mono text-xs font-bold text-evidence transition-colors hover:text-evidence-dim"
+        className="mx-0.5 inline-block rounded hover:bg-white/10 px-0.5 font-mono text-[10px] font-bold text-evidence transition-colors"
         title="Jump to evidence"
       >
         [{entry.index}]
@@ -403,6 +406,7 @@ function InlineText({
   };
 
   const parts = text.split(/(\[TOOL:[^\]]+\])/g);
+  
   return (
     <>
       {parts.map((part, i) => {
@@ -410,10 +414,9 @@ function InlineText({
           const id = part.slice(6, -1);
           return renderCitation(id, String(i));
         }
-        // Also handle tool_XXXX references with or without brackets
-        const bareToolParts = part.split(
-          /\[?(tool_[a-f0-9]{4,8})\]?/gi
-        );
+        
+        const bareToolParts = part.split(/\[?(tool_[a-f0-9]{4,8})\]?/gi);
+        
         if (bareToolParts.length > 1) {
           return bareToolParts.map((sub, j) => {
             if (/^tool_[a-f0-9]{4,8}$/i.test(sub)) {
@@ -428,13 +431,13 @@ function InlineText({
   );
 }
 
-function BlinkingCursor({ color }: { color: string }) {
+function Cursor({ color }: { color: string }) {
+  // A simple, classic terminal pipe cursor.
+  // "inline-block" ensures it sits right next to the last letter.
   return (
     <span
-      className={`ml-0.5 inline-block h-4 w-0.5 ${color.replace("text-", "bg-")}`}
-      style={{
-        animation: "typing-dot 1s infinite",
-      }}
+      className={`ml-0.5 inline-block h-3.5 w-0.5 align-middle ${color.replace("text-", "bg-")}`}
+      style={{ animation: "cursor-blink 1s step-end infinite" }}
     />
   );
 }

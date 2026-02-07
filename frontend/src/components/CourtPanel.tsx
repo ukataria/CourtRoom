@@ -232,8 +232,8 @@ export function CourtPanel({
         <div className="border-b border-court-border px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Icon className={`h-4 w-4 ${config.color}`} />
-              <span className={`text-sm font-semibold ${config.color}`}>
+              <Icon className={`h-5 w-5 ${config.color}`} />
+              <span className={`text-base font-semibold ${config.color}`}>
                 {config.label}
               </span>
               {isActive && (

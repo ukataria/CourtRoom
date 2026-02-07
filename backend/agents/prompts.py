@@ -124,7 +124,8 @@ Challenge ONE specific weakness in the Defense's argument. \
 Be direct and pointed — 2-3 sentences max. This should also include \
 it's responses to your previous questions. 
 
-Reference evidence already presented in the debate. No new searches.
+Reference evidence already presented in the debate. No new searches. Cite evidence with this format: \
+"claim text [tool_abc123]"
 
 Speak TO the Defense: For example: "Your claim about X is flawed because..."
 Attack the evidence quality, not argument structure. It is important to be 
@@ -136,7 +137,8 @@ You are the Defense responding in rapid cross-examination.
 Address the Prosecution's points directly in. \
 2-3 sentences max. Either rebut with existing evidence or logical reasonaing claims.
 
-Reference evidence already presented in the debate. No new searches.
+Reference evidence already presented in the debate. No new searches. Cite evidence with this format: \
+"claim text [tool_abc123]"
 
 Speak TO the Prosecution: For example: "You raise X, but..." or "Fair point on X, however..."
 Conceding a weak point beats defending it poorly. It is important to be 

@@ -109,46 +109,52 @@ function App() {
             />
           )}
 
-          {/* Scrollable Content Area */}
-          <div className="flex flex-1 flex-col overflow-y-auto">
-            {/* Three-Panel Layout — always visible */}
-            <main
-              className={`flex gap-4 overflow-hidden p-4 ${
-                showCrossExam
-                  ? "h-[70vh] shrink-0"
-                  : "flex-1"
-              }`}
-            >
-              {/* Defense Panel */}
-              <div className="flex-1">
-                <CourtPanel
-                  role="defense"
-                  text={state.defenseText}
-                  isActive={state.activeAgent === "defense"}
-                  interrupted={state.defenseInterrupted}
-                  validationFlags={state.validationFlags}
-                  evidence={state.evidence}
-                  toolCalls={state.toolCalls}
-                  onCitationClick={handleCitationClick}
-                />
+          {/* Two-Column Layout: Main Content + Evidence Sidebar */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left: Scrollable Main Content */}
+            <div className="flex flex-1 flex-col overflow-y-auto">
+              {/* Opening Statements — side by side */}
+              <div
+                className={`flex gap-4 p-4 ${
+                  showCrossExam || state.judgeText
+                    ? "h-[60vh] shrink-0"
+                    : "flex-1"
+                }`}
+              >
+                <div className="flex-1">
+                  <CourtPanel
+                    role="defense"
+                    text={state.defenseText}
+                    isActive={state.activeAgent === "defense"}
+                    interrupted={state.defenseInterrupted}
+                    validationFlags={state.validationFlags}
+                    evidence={state.evidence}
+                    toolCalls={state.toolCalls}
+                    onCitationClick={handleCitationClick}
+                  />
+                </div>
+                <div className="flex-1">
+                  <CourtPanel
+                    role="prosecution"
+                    text={state.prosecutionText}
+                    isActive={
+                      state.activeAgent === "prosecution"
+                    }
+                    interrupted={state.prosecutionInterrupted}
+                    validationFlags={state.validationFlags}
+                    evidence={state.evidence}
+                    toolCalls={state.toolCalls}
+                    onCitationClick={handleCitationClick}
+                  />
+                </div>
               </div>
 
-              {/* Evidence Trail + Cross-Exam Button */}
-              <div className="flex w-80 shrink-0 flex-col">
-                <EvidenceTrail
-                  toolCalls={state.toolCalls}
-                  evidence={state.evidence}
-                  researcherText={state.researcherText}
-                  isResearchActive={
-                    state.activeAgent === "researcher"
-                  }
-                  highlightedId={highlightedEvidenceId}
-                />
-
-                {state.phase === "AWAITING_CROSS_EXAM" && (
+              {/* Cross-Exam Button */}
+              {state.phase === "AWAITING_CROSS_EXAM" && (
+                <div className="flex justify-center px-4 pb-4">
                   <button
                     onClick={startCrossExam}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gold/40 bg-gold/10 px-6 py-3.5 text-sm font-bold text-gold transition-all duration-300 hover:bg-gold/20 hover:shadow-lg hover:shadow-gold/20"
+                    className="flex items-center justify-center gap-2 rounded-xl border border-gold/40 bg-gold/10 px-8 py-3.5 text-sm font-bold text-gold transition-all duration-300 hover:bg-gold/20 hover:shadow-lg hover:shadow-gold/20"
                     style={{
                       animation:
                         "fade-in 0.4s ease-out, pulse-glow 3s infinite",
@@ -157,47 +163,44 @@ function App() {
                     <Swords className="h-5 w-5" />
                     Begin Cross-Examination
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Prosecution Panel */}
-              <div className="flex-1">
-                <CourtPanel
-                  role="prosecution"
-                  text={state.prosecutionText}
-                  isActive={
-                    state.activeAgent === "prosecution"
-                  }
-                  interrupted={state.prosecutionInterrupted}
-                  validationFlags={state.validationFlags}
+              {/* Cross-Examination */}
+              {showCrossExam && (
+                <CrossExamView
+                  messages={state.crossExamMessages}
+                  activeAgent={state.activeAgent}
                   evidence={state.evidence}
                   toolCalls={state.toolCalls}
                   onCitationClick={handleCitationClick}
                 />
-              </div>
-            </main>
+              )}
 
-            {/* Cross-Examination — appears below panels */}
-            {showCrossExam && (
-              <CrossExamView
-                messages={state.crossExamMessages}
-                activeAgent={state.activeAgent}
-                evidence={state.evidence}
-                toolCalls={state.toolCalls}
-                onCitationClick={handleCitationClick}
-              />
-            )}
+              {/* Judge Summary */}
+              {state.judgeText && (
+                <JudgeSummary
+                  text={state.judgeText}
+                  isActive={state.activeAgent === "judge"}
+                  evidence={state.evidence}
+                  toolCalls={state.toolCalls}
+                  onCitationClick={handleCitationClick}
+                />
+              )}
+            </div>
 
-            {/* Judge Summary */}
-            {state.judgeText && (
-              <JudgeSummary
-                text={state.judgeText}
-                isActive={state.activeAgent === "judge"}
-                evidence={state.evidence}
+            {/* Right: Evidence Trail Sidebar */}
+            <div className="flex w-90 shrink-0 flex-col border-l border-court-border p-4">
+              <EvidenceTrail
                 toolCalls={state.toolCalls}
-                onCitationClick={handleCitationClick}
+                evidence={state.evidence}
+                researcherText={state.researcherText}
+                isResearchActive={
+                  state.activeAgent === "researcher"
+                }
+                highlightedId={highlightedEvidenceId}
               />
-            )}
+            </div>
           </div>
 
           {/* Intervention Bar */}

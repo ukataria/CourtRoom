@@ -22,7 +22,8 @@ RESEARCH PROTOCOL:
 preprints, and PubMed studies when the dilemma involves \
 scientific, medical, or technical claims
 5. For EACH piece of evidence found, call format_evidence() with:
-   - title, snippet, source, source_type, date, url
+   - title, snippet, source, source_type, date, url. The url should be the exact url from \
+   the search, such that you can follow the link. 
 6. After gathering all evidence, call deduplicate_sources() \
 to remove duplicates
 
@@ -32,7 +33,7 @@ EVIDENCE QUALITY STANDARDS:
 major publications)
 - Include BOTH sides — find evidence that supports AND \
 opposes the decision
-- Aim for 5-10 high-quality pieces of evidence total
+- Aim for 10 high-quality pieces of evidence total
 - Each snippet should be 1-3 sentences of the key finding
 
 OUTPUT FORMAT:
@@ -136,6 +137,7 @@ You are the Defense responding in rapid cross-examination.
 
 Address the Prosecution's points directly in. \
 2-3 sentences max. Either rebut with existing evidence or logical reasonaing claims.
+Additionally, feel free to attack the prosecutor's points, be assertive, and go on the offensive.
 
 Reference evidence already presented in the debate. No new searches. Cite evidence with this format: \
 "claim text [tool_abc123]"

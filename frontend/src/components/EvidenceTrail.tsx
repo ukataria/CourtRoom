@@ -4,12 +4,21 @@ import {
   Loader2,
   BookOpen,
   Globe,
+  Layout,
   GraduationCap,
   FileText,
   ExternalLink,
   ChevronDown,
 } from "lucide-react";
 import type { EvidenceItem, ToolCallEvent } from "../types";
+
+const LOADING_STEPS = [
+  { text: "Calling Brave Search...", icon: <Globe className="h-4 w-4" /> },
+  { text: "Calling Valuu...", icon: <Search className="h-4 w-4" /> },
+  { text: "Exploring Websites...", icon: <Globe className="h-4 w-4" /> },
+  { text: "Analyzing Documents...", icon: <FileText className="h-4 w-4" /> },
+  { text: "Compiling Sources...", icon: <Layout className="h-4 w-4" /> }
+];
 
 interface EvidenceTrailProps {
   toolCalls: ToolCallEvent[];
@@ -40,6 +49,8 @@ export function EvidenceTrail({
     evidence.length > 0 ||
     toolCalls.length > 0 ||
     !!researcherText;
+  const [stepIndex, setStepIndex] = useState(0);
+
 
   // Scroll to highlighted evidence card
   useEffect(() => {
@@ -51,6 +62,18 @@ export function EvidenceTrail({
       el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [highlightedId]);
+
+
+  // Cycle through prompts every 2.5 seconds when research is active
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isResearchActive && !hasContent) {
+      interval = setInterval(() => {
+        setStepIndex((prev) => (prev + 1) % LOADING_STEPS.length);
+      }, 10000);
+    }
+    return () => clearInterval(interval);
+  }, [isResearchActive, hasContent]);
 
   // Auto-scroll to bottom when new evidence arrives
   const prevCountRef = useRef(evidence.length);
@@ -66,8 +89,7 @@ export function EvidenceTrail({
     }
     prevCountRef.current = evidence.length;
   }, [evidence.length]);
-
-  return (
+return (
     <div className="flex h-full flex-col rounded-xl border border-court-border bg-court-surface">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-court-border px-4 py-3">
@@ -93,11 +115,25 @@ export function EvidenceTrail({
         className="flex-1 overflow-y-auto px-3 py-3"
       >
         {!hasContent ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-court-text-muted">
-            <Search className="h-6 w-6 opacity-40" />
-            <span className="text-sm">
-              Evidence will appear here
-            </span>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-court-text-muted">
+            {isResearchActive ? (
+              <div className="flex flex-col items-center gap-3 transition-all duration-500">
+                <div className="relative">
+                   <div className="absolute inset-0 animate-ping rounded-full bg-evidence/20" />
+                   <div className="relative rounded-full bg-court-surface p-2 border border-evidence/30">
+                     {LOADING_STEPS[stepIndex].icon}
+                   </div>
+                </div>
+                <span className="text-sm font-medium animate-pulse text-evidence">
+                  {LOADING_STEPS[stepIndex].text}
+                </span>
+              </div>
+            ) : (
+              <>
+                <Search className="h-6 w-6 opacity-40" />
+                <span className="text-sm">Evidence will appear here</span>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-0.5">

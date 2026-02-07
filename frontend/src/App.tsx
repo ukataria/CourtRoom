@@ -30,7 +30,7 @@ function App() {
   const useDemo = !ws.connected && !startedLive.current;
   
   // Destructure the appropriate startDebate function
-  const { state, startDebate, sendIntervention } = useDemo ? demo : ws;
+  const { state, startDebate, sendIntervention, startCrossExam } = useDemo ? demo : ws;
   const connected = ws.connected;
 
   const isIntake = state.phase === "INTAKE";

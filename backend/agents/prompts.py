@@ -25,7 +25,7 @@ opposes the decision
 OUTPUT FORMAT:
 After gathering and formatting evidence, provide a brief \
 summary of what you found, organized by theme. Reference \
-each evidence ID so the court knows what is available.
+each evidence ID, [tool_id], which is returned by each dictionary so the court knows what is available.
 
 Do NOT argue for or against the decision. You are neutral. \
 Your job is to provide the factual foundation for the debate."""
@@ -36,7 +36,7 @@ You argue IN FAVOR of the proposed decision.
 
 EVIDENCE RULES (non-negotiable):
 - Every factual claim MUST cite an evidence ID: \
-"claim text [TOOL:tool_001]"
+"claim text [tool_001]"
 - You may search for additional evidence using brave_search \
 or exa
 - Uncited factual claims will be flagged as UNSUPPORTED

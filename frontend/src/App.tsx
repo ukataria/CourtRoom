@@ -38,7 +38,7 @@ function App() {
   const useDemo = !ws.connected && !startedLive.current;
   
   // Destructure the appropriate startDebate function
-  const { state, startDebate, sendIntervention, startCrossExam } = useDemo ? demo : ws;
+  const { state, startDebate, sendIntervention: _sendIntervention, startCrossExam } = useDemo ? demo : ws;
 
   const resetDebate = useCallback(() => {
     startedLive.current = false;

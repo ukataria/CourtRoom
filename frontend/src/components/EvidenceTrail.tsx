@@ -66,7 +66,7 @@ export function EvidenceTrail({
 
   // Cycle through prompts every 2.5 seconds when research is active
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isResearchActive && !hasContent) {
       interval = setInterval(() => {
         setStepIndex((prev) => (prev + 1) % LOADING_STEPS.length);

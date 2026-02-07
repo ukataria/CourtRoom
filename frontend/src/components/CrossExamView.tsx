@@ -79,9 +79,6 @@ export function CrossExamView({
         <h2 className="text-lg font-bold text-gold">
           Cross-Examination
         </h2>
-        <span className="ml-2 rounded-full bg-gold/10 px-2.5 py-0.5 text-xs font-medium text-gold">
-          {exchangeCount} / 5 exchanges
-        </span>
       </div>
 
       {/* Messages */}

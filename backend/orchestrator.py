@@ -57,7 +57,7 @@ class DebatePhase(str, Enum):
 
 
 # Cross-examination configuration
-MAX_CROSS_EXCHANGES = 5  # Each side gets 5 turns (10 total)
+MAX_CROSS_EXCHANGES = 3  # Each side gets 5 turns (10 total)
 # --- Session State ---
 
 

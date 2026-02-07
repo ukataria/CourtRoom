@@ -18,9 +18,7 @@ class Citation:
     """
 
     def __init__(self) -> None:
-        self.evidence_queue: asyncio.Queue[dict[str, str]] = (
-            asyncio.Queue()
-        )
+        self.evidence_queue: asyncio.Queue[dict[str, str]] = asyncio.Queue()
 
     def add_evidence(self, evidence_dict: dict[str, str]) -> None:
         """Adds evidence to the queue for immediate forwarding."""
@@ -28,6 +26,7 @@ class Citation:
 
     def make_format_evidence_tool(self):
         """Creates the make format evidence tool for the MCP"""
+        print("MAKE FORMAT EVIDENCE TOOL CALLED")
 
         def make_format_evidence(
             title: str,
@@ -51,6 +50,7 @@ class Citation:
                 date: Publication date if available (e.g. "2025-03").
                 url: URL of the source if available.
             """
+            print("CALLLEEEEEEEED")
             evidence_id = f"tool_{uuid.uuid4().hex[:6]}"
 
             evidence = {
@@ -83,6 +83,7 @@ class Citation:
             Returns:
                 Deduplicated list of evidence objects.
             """
+            print("SOURCES FORMATTED??")
             seen_titles: set[str] = set()
             unique: list[dict[str, str]] = []
             for src in sources:

@@ -21,6 +21,5 @@ def create_researcher_config(citations: Citation) -> AgentConfig:
         mcp_servers=[MCP_BRAVE_SEARCH, MCP_EXA],
         tools=[
             citations.make_format_evidence_tool(),
-            citations.make_deduplicate_sources_tool(),
         ],
     )

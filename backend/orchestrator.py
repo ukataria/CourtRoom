@@ -320,7 +320,7 @@ async def run_agent_turn(
     slog.info(
         "agent_turn_complete",
         total_chunks=chunk_count,
-        response_length=len(partial_response),
+        response=partial_response,
     )
     return True
 
@@ -461,9 +461,7 @@ async def run_debate(
     # --- Judge Summary ---
     await _transition(session, DebatePhase.VERDICT, ws)
     judge_config = create_judge_config()
-    await run_agent_turn(
-        session, judge_config, citations, runner, ws
-    )
+    await run_agent_turn(session, judge_config, citations, runner, ws)
 
     # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)

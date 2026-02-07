@@ -64,9 +64,6 @@ export function CrossExamView({
     });
   }, [messages]);
 
-  const doneCount = messages.filter((m) => m.done).length;
-  const exchangeCount = Math.ceil(doneCount / 2);
-
   return (
     <div
       ref={sectionRef}

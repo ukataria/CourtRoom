@@ -6,20 +6,20 @@ interface InterventionBarProps {
   phase: DebatePhase;
   interruptPending: boolean;
   onInterrupt: () => void;
+  onDismiss: () => void;
   onIntervene: (content: string) => void;
 }
 
 const INTERRUPTIBLE_PHASES: Set<DebatePhase> = new Set([
   "DEFENSE_OPENING",
   "PROSECUTION_OPENING",
-  "CROSS_EXAM_1",
-  "CROSS_EXAM_2",
 ]);
 
 export function InterventionBar({
   phase,
   interruptPending,
   onInterrupt,
+  onDismiss: _onDismiss,
   onIntervene,
 }: InterventionBarProps) {
   const [input, setInput] = useState("");
@@ -43,48 +43,42 @@ export function InterventionBar({
     }
   };
 
-  // Mode 1: Interrupt button — user hasn't interrupted yet
+  // Mode 1: Interrupt button
   if (!interruptPending) {
     return (
-      <div className="border-t border-gold/30 bg-court-surface px-6 py-3">
-        <div className="mx-auto flex max-w-5xl justify-center">
-          <button
-            onClick={onInterrupt}
-            className="flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-6 py-2.5 text-sm font-semibold text-gold transition-all hover:bg-gold/20 hover:shadow-lg hover:shadow-gold/20"
-          >
-            <Hand className="h-4 w-4" />
-            Interrupt
-          </button>
-        </div>
-      </div>
+      <button
+        onClick={onInterrupt}
+        className="mt-3 flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-sm font-semibold text-gold transition-all hover:bg-gold/20 hover:shadow-lg hover:shadow-gold/20"
+      >
+        <Hand className="h-4 w-4" />
+        Interrupt
+      </button>
     );
   }
 
-  // Mode 2: Input — user interrupted, now typing directive
+  // Mode 2: Input — stays until user submits
   return (
-    <div className="border-t border-gold/30 bg-court-surface px-6 py-3">
-      <div className="mx-auto flex max-w-5xl items-center gap-3">
-        <Gavel className="h-5 w-5 shrink-0 text-gold" />
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Direct the court — what should they address?"
-            className="w-full rounded-lg border border-gold/30 bg-court-panel px-4 py-2.5 text-sm text-court-text placeholder-court-text-muted outline-none transition-colors focus:border-gold"
-            autoFocus
-          />
-        </div>
-        <button
-          onClick={handleSubmit}
-          disabled={!input.trim()}
-          className="flex items-center gap-2 rounded-lg bg-gold px-4 py-2.5 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <SendHorizonal className="h-4 w-4" />
-          Submit
-        </button>
+    <div className="mt-3 flex shrink-0 flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Gavel className="h-4 w-4 shrink-0 text-gold" />
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Direct the court..."
+          className="min-w-0 flex-1 rounded-lg border border-gold/30 bg-court-panel px-3 py-2 text-sm text-court-text placeholder-court-text-muted outline-none transition-colors focus:border-gold"
+          autoFocus
+        />
       </div>
+      <button
+        onClick={handleSubmit}
+        disabled={!input.trim()}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <SendHorizonal className="h-4 w-4" />
+        Submit
+      </button>
     </div>
   );
 }

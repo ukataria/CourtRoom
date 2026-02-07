@@ -276,6 +276,10 @@ export function useDebateSocket(url: string) {
     setState((prev) => ({ ...prev, interruptPending: true }));
   }, [send]);
 
+  const dismissInterrupt = useCallback(() => {
+    setState((prev) => ({ ...prev, interruptPending: false }));
+  }, []);
+
   const sendIntervention = useCallback(
     (content: string) => {
       send({ type: "intervention", content });
@@ -312,6 +316,7 @@ export function useDebateSocket(url: string) {
     state,
     startDebate,
     sendInterrupt,
+    dismissInterrupt,
     sendIntervention,
     startCrossExam,
     resetDebate,

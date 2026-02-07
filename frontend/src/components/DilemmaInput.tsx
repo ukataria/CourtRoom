@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Scale, ArrowRight, Sparkles, Paperclip, X, Loader2, FileText } from "lucide-react";
+import { Scale, ArrowRight, Paperclip, X, Loader2, FileText } from "lucide-react";
 
 const EXAMPLE_CHIPS = [
   "Should CMU require AI ethics courses?",

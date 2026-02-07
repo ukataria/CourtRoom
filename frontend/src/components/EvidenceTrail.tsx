@@ -102,26 +102,21 @@ function EvidenceCard({
       className="rounded-lg border border-court-border bg-court-panel p-3"
       style={{ animation: "fade-in 0.3s ease-out" }}
     >
-      {/* Header row */}
+      {/* Title + source type */}
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <CheckCircle2 className="h-3 w-3 shrink-0 text-confirmed" />
-          <span className="rounded bg-evidence/10 px-1.5 py-0.5 font-mono text-[10px] text-evidence">
-            {evidence.id}
-          </span>
+          <p className="text-xs font-medium leading-snug text-court-text">
+            {evidence.title}
+          </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Icon className="h-3 w-3 text-court-text-muted" />
           <span className="text-[10px] text-court-text-muted">
             {config.label}
           </span>
         </div>
       </div>
-
-      {/* Title */}
-      <p className="mb-1 text-xs font-medium leading-snug text-court-text">
-        {evidence.title}
-      </p>
 
       {/* Snippet */}
       <p className="text-xs leading-relaxed text-court-text-dim">
